@@ -10,8 +10,18 @@ When you ship something, add an entry here and update the **Status** line in `CL
 
 ## Unreleased
 
-- Prod webhook deploy on VPS.
+- Prod webhook (`ENV=prod`, domain + HTTPS).
 - Supabase Postgres + first Alembic migration.
+
+## 2026-05-15 — Phase 0 — `/vpstest` deploy check
+
+- Added `/vpstest` command (replies `VPS worked`) to verify `git pull` + systemd restarts on the VPS.
+- Added `deploy/trenchflow.service` for systemd setup.
+
+## 2026-05-15 — Phase 0 — VPS deploy + GitHub
+
+- Public repo: https://github.com/pwiftdev/Trenchflow_bot (private docx/assets gitignored).
+- Bot runs on Hetzner VPS via systemd; `/ping` works without local Mac running.
 
 ## 2026-05-15 — Phase 0 — Dev bot online (`/ping`)
 

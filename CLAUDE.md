@@ -9,8 +9,8 @@ This file is loaded into every Cursor / Claude session. Keep it tight and curren
 ## Status
 
 - **Current phase:** Phase 0 — Foundations (in progress)
-- **Last working feature:** `/ping` → `pong` verified in Telegram (dev polling, `ENV=dev`, `python main.py`)
-- **Next task:** Supabase + first migration (`tokens`, `groups`, `scan_events`), then prod webhook on VPS. Local bot + token are done.
+- **Last working feature:** `/ping` → `pong` on Hetzner VPS (CX23 Nuremberg, systemd, polling `ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
+- **Next task:** Supabase + first migration (`tokens`, `groups`, `scan_events`), then prod webhook (`ENV=prod`, domain + HTTPS). Phase 0 almost done.
 
 See `CHANGELOG.md` for what shipped previously.
 

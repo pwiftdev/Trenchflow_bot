@@ -2,7 +2,7 @@
 
 A Solana-native Telegram bot for crypto trading groups. Replaces Rick + a wallet tracker + a holder bot with one cleaner product.
 
-**Status:** Phase 0 — Foundations (in progress)
+**Status:** Phase 0 — Foundations (in progress). Bot runs on Hetzner VPS; repo: [pwiftdev/Trenchflow_bot](https://github.com/pwiftdev/Trenchflow_bot).
 
 ## What it does
 
