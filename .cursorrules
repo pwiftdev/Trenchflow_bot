@@ -1,0 +1,13 @@
+Read `CLAUDE.md` at the repo root before doing anything else. It contains the project context, tech stack, folder structure, naming conventions, key business logic, and what NOT to do. Treat it as authoritative.
+
+Quick reminders that matter most for this project:
+
+- One feature per prompt. Don't try to "build the wallet tracker" in one go.
+- Network calls go in `/services/`. `/domain/` is pure functions only.
+- Async everywhere. Sync code in the hot path is a bug.
+- Don't hardcode magic numbers (rating weights, thresholds, TTLs). They live in `config/settings.py`.
+- Don't introduce a new ORM, framework, or DB. Stack is fixed in `CLAUDE.md`.
+- Write tests for the rating algorithm, PnL math, CA regex, and sniper/fresh-wallet calc. These are the places subtle bugs hide.
+- Never commit `.env`. Never log API keys.
+
+When unsure: ship the smallest correct version, write a test for it, update `CLAUDE.md` with what you learned.

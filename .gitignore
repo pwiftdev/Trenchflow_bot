@@ -1,0 +1,61 @@
+# --- Secrets (never commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+secrets/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# --- Private docs & local assets (not for public repo) ---
+Trenchflow_Build_Plan.docx
+Trenchflow_Proposal.docx
+AlphaScan_Build_Plan.docx
+AlphaScan_Proposal.docx
+*.docx
+trenchflowlogo.png
+*.png
+!docs/**/*.png
+
+# --- Node (in case we add JS tooling) ---
+node_modules/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Local DB / scratch ---
+*.sqlite
+*.sqlite3
+*.db
+scratch/
+tmp/
