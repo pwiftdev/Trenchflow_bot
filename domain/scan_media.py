@@ -6,20 +6,30 @@ from domain.token_snapshot import TokenSnapshot
 def photo_url_candidates(snapshot: TokenSnapshot) -> list[str]:
     """URLs to try for Telegram send_photo, best first.
 
-    DexScreener often sets ``info.header`` before the banner file is ready, or
-    serves it as a GIF — ``reply_photo`` then fails and we must fall back to
-    ``imageUrl`` (usually a square PNG/JPEG icon).
+    Order: DexScreener banner/icon, then on-chain metadata image (Helius),
+    then openGraph. DexScreener often sets ``info.header`` before the file is
+    ready, or serves GIFs — ``reply_photo`` then fails without further URLs.
     """
-    raw = (
+    dex_urls = (
         snapshot.header_image_url,
         snapshot.image_url,
         snapshot.open_graph_url,
     )
+    metadata_url = snapshot.metadata_image_url
+
+    has_dex_image = any(_normalize_https_url(url) for url in dex_urls[:2])
+
+    ordered: tuple[Optional[str], ...]
+    if not has_dex_image and metadata_url:
+        ordered = (metadata_url, *dex_urls)
+    else:
+        ordered = (*dex_urls[:2], metadata_url, dex_urls[2])
+
     seen: set[str] = set()
     still: list[str] = []
     animated: list[str] = []
 
-    for url in raw:
+    for url in ordered:
         normalized = _normalize_https_url(url)
         if normalized is None or normalized in seen:
             continue

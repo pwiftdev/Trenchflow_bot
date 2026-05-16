@@ -45,6 +45,13 @@ def test_photo_candidates_header_then_icon() -> None:
     ]
 
 
+def test_photo_candidates_metadata_first_when_no_dex_images() -> None:
+    snapshot = _snapshot(
+        metadata_image_url="https://ipfs.io/ipfs/QmTokenIcon",
+    )
+    assert photo_url_candidates(snapshot) == ["https://ipfs.io/ipfs/QmTokenIcon"]
+
+
 def test_photo_candidates_dedupes_identical_urls() -> None:
     url = "https://cdn.example.com/same.png"
     snapshot = _snapshot(header_image_url=url, image_url=url)

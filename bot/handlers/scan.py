@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -45,6 +46,16 @@ async def _fetch_security(mint: str) -> Optional[SecuritySnapshot]:
         return None
 
 
+async def _fetch_metadata_image(mint: str) -> Optional[str]:
+    client = _helius_client()
+    if client is None:
+        return None
+    try:
+        return await client.fetch_token_image_url(mint)
+    except HeliusError:
+        return None
+
+
 async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message is None:
         return
@@ -62,9 +73,10 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     dex_client = _dexscreener_client()
 
     try:
-        snapshot, security = await asyncio.gather(
+        snapshot, security, metadata_image = await asyncio.gather(
             dex_client.fetch_token_snapshot(settings.solana_chain_id, mint),
             _fetch_security(mint),
+            _fetch_metadata_image(mint),
         )
     except TokenNotFoundError:
         await update.message.reply_text(
@@ -76,6 +88,9 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "Couldn't reach DexScreener right now. Try again in a moment."
         )
         return
+
+    if metadata_image:
+        snapshot = dataclasses.replace(snapshot, metadata_image_url=metadata_image)
 
     scanned_at = datetime.now(timezone.utc)
     first_call_line = await build_first_call_line(update, mint=mint, snapshot=snapshot)

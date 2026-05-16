@@ -3,6 +3,12 @@ from typing import Any, Optional
 import httpx
 import structlog
 
+from domain.metadata_image import (
+    image_url_from_helius_asset,
+    image_url_from_metadata_json,
+    metadata_json_uri_from_asset,
+    resolve_content_uri,
+)
 from domain.security_snapshot import SecuritySnapshot
 
 log = structlog.get_logger()
@@ -30,6 +36,58 @@ class HeliusClient:
             raise HeliusError from exc
 
         return _parse_security(account_info, largest)
+
+    async def fetch_token_image_url(self, mint: str) -> Optional[str]:
+        try:
+            asset = await self._rpc_call(
+                "getAsset",
+                {"id": mint, "displayOptions": {"showFungible": True}},
+            )
+        except Exception as exc:
+            log.warning("helius_get_asset_failed", mint=mint, error=str(exc))
+            raise HeliusError from exc
+
+        if not asset:
+            return None
+
+        image = image_url_from_helius_asset(asset)
+        if image:
+            return image
+
+        json_uri = metadata_json_uri_from_asset(asset)
+        if not json_uri:
+            return None
+
+        return await self._fetch_image_from_metadata_uri(json_uri)
+
+    async def _fetch_image_from_metadata_uri(self, json_uri: str) -> Optional[str]:
+        fetch_url = resolve_content_uri(json_uri)
+        if not fetch_url:
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
+                response = await client.get(fetch_url)
+                response.raise_for_status()
+                payload = response.json()
+        except Exception as exc:
+            log.warning("helius_metadata_json_failed", uri=json_uri, error=str(exc))
+            return None
+
+        return image_url_from_metadata_json(payload)
+
+    async def _rpc_call(self, method: str, params: Any) -> Any:
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                self._rpc_url,
+                json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+            )
+            response.raise_for_status()
+            body = response.json()
+
+        if body.get("error"):
+            raise HeliusError(str(body["error"]))
+        return body.get("result")
 
     async def _rpc_batch(
         self,
