@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 from bot.alpha_notify import notify_founders_scan
 from bot.scan_context import build_first_call_line, build_scan_meta, record_scan_event
 from bot.scan_keyboard import build_scan_keyboard
+from bot.scan_reply import reply_scan_card
 from config.settings import get_settings
 from domain.ca import is_valid_solana_address
 from domain.scan_card import format_scan_card
@@ -89,7 +90,6 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         caption = caption[:1020] + "…"
 
     keyboard = build_scan_keyboard(snapshot)
-    banner = snapshot.header_image_url or snapshot.image_url
 
     await record_scan_event(update, mint=mint, scanned_at=scanned_at, snapshot=snapshot)
     await notify_founders_scan(
@@ -100,18 +100,9 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         scanned_at=scanned_at,
     )
 
-    if banner:
-        await update.message.reply_photo(
-            photo=banner,
-            caption=caption,
-            parse_mode="HTML",
-            reply_markup=keyboard,
-        )
-        return
-
-    await update.message.reply_text(
-        caption,
-        parse_mode="HTML",
-        disable_web_page_preview=False,
-        reply_markup=keyboard,
+    await reply_scan_card(
+        update.message,
+        caption=caption,
+        keyboard=keyboard,
+        snapshot=snapshot,
     )

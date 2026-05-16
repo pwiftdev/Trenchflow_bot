@@ -22,6 +22,7 @@ class TokenSnapshot:
     pair_url: Optional[str] = None
     image_url: Optional[str] = None
     header_image_url: Optional[str] = None
+    open_graph_url: Optional[str] = None
     websites: list[tuple[str, str]] = field(default_factory=list)
     socials: list[tuple[str, str]] = field(default_factory=list)
     boosts_active: Optional[int] = None

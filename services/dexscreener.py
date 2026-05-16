@@ -130,12 +130,20 @@ def _pair_to_snapshot(pair: dict[str, Any], mint: str) -> TokenSnapshot:
         dex_id=pair.get("dexId"),
         labels=labels,
         pair_url=pair.get("url"),
-        image_url=info.get("imageUrl"),
-        header_image_url=info.get("header"),
+        image_url=_normalize_media_url(info.get("imageUrl")),
+        header_image_url=_normalize_media_url(info.get("header")),
+        open_graph_url=_normalize_media_url(info.get("openGraph")),
         websites=websites,
         socials=socials,
         boosts_active=_to_int(boosts.get("active")),
     )
+
+
+def _normalize_media_url(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned if cleaned.startswith("https://") else None
 
 
 def _to_float(value: Any) -> Optional[float]:
