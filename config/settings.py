@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     env: Literal["dev", "prod"] = Field(default="dev", validation_alias="ENV")
     webhook_url: Optional[str] = Field(default=None, validation_alias="WEBHOOK_URL")
 
+    dexscreener_base_url: str = Field(
+        default="https://api.dexscreener.com",
+        validation_alias="DEXSCREENER_BASE_URL",
+    )
+    dexscreener_timeout_seconds: float = Field(
+        default=10.0,
+        validation_alias="DEXSCREENER_TIMEOUT_SECONDS",
+    )
+    solana_chain_id: str = Field(default="solana", validation_alias="SOLANA_CHAIN_ID")
+
     @model_validator(mode="before")
     @classmethod
     def empty_env_values_are_none(cls, data: object) -> object:
