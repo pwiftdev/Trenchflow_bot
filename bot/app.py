@@ -1,7 +1,9 @@
 from telegram.ext import Application, CommandHandler
 
+from bot.commands import register_bot_commands
 from bot.handlers.dbtest import dbtest_command
 from bot.handlers.founderstest import founderstest_command
+from bot.handlers.help import help_command
 from bot.handlers.ping import ping_command
 from bot.handlers.scan import scan_command
 from bot.handlers.vpstest import vpstest_command
@@ -9,14 +11,19 @@ from config.settings import Settings
 
 
 def build_application(settings: Settings) -> Application:
+    async def post_init(application: Application) -> None:
+        await register_bot_commands(application.bot, settings)
+
     application = (
         Application.builder()
         .token(settings.telegram_bot_token)
+        .post_init(post_init)
         .build()
     )
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("scan", scan_command))
     application.add_handler(CommandHandler("ping", ping_command))
     application.add_handler(CommandHandler("vpstest", vpstest_command))
     application.add_handler(CommandHandler("dbtest", dbtest_command))
     application.add_handler(CommandHandler("founderstest", founderstest_command))
-    application.add_handler(CommandHandler("scan", scan_command))
     return application
