@@ -133,10 +133,24 @@ def _format_security(
         dev = security.dev_sold_label or "— <i>(soon)</i>"
         lines.append(f"├ Dev: {escape(dev)}")
 
-    dex_paid = "🟢" if (snapshot.boosts_active or 0) > 0 else "—"
-    lines.append(f"└ DEX Paid: {dex_paid}")
+    lines.append(f"└ DEX Paid: {_format_dex_paid(snapshot)}")
 
     return "\n".join(lines)
+
+
+def _format_dex_paid(snapshot: TokenSnapshot) -> str:
+    profile_paid = snapshot.dex_profile_paid
+    boost_total = snapshot.dex_boost_amount_total
+
+    if profile_paid and boost_total:
+        return f"🟢 profile · {boost_total} boost"
+    if profile_paid:
+        return "🟢 profile"
+    if boost_total:
+        return f"🔵 {boost_total} boost"
+    if (snapshot.boosts_active or 0) > 0:
+        return "🔵 active boost"
+    return "—"
 
 
 def _authority_label(renounced: Optional[bool], *, good_when_true: bool) -> str:

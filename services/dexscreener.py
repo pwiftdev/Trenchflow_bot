@@ -3,6 +3,7 @@ from typing import Any, Optional
 import httpx
 import structlog
 
+from domain.dex_orders import DexOrdersInfo, parse_dex_orders
 from domain.token_snapshot import TokenSnapshot
 
 log = structlog.get_logger()
@@ -37,6 +38,19 @@ class DexScreenerClient:
             raise TokenNotFoundError(mint)
 
         return _pair_to_snapshot(pair, mint)
+
+    async def fetch_token_orders(self, chain_id: str, mint: str) -> DexOrdersInfo:
+        url = f"{self._base_url}/orders/v1/{chain_id}/{mint}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                payload = response.json()
+        except httpx.HTTPError as exc:
+            log.warning("dexscreener_orders_failed", mint=mint, error=str(exc))
+            return DexOrdersInfo(profile_paid=False, boost_amount_total=0, boost_order_count=0)
+
+        return parse_dex_orders(payload)
 
     async def _fetch_pairs(self, chain_id: str, mint: str) -> list[dict[str, Any]]:
         endpoints = (

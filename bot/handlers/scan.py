@@ -73,10 +73,11 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     dex_client = _dexscreener_client()
 
     try:
-        snapshot, security, metadata_image = await asyncio.gather(
+        snapshot, security, metadata_image, dex_orders = await asyncio.gather(
             dex_client.fetch_token_snapshot(settings.solana_chain_id, mint),
             _fetch_security(mint),
             _fetch_metadata_image(mint),
+            dex_client.fetch_token_orders(settings.solana_chain_id, mint),
         )
     except TokenNotFoundError:
         await update.message.reply_text(
@@ -89,8 +90,12 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    if metadata_image:
-        snapshot = dataclasses.replace(snapshot, metadata_image_url=metadata_image)
+    snapshot = dataclasses.replace(
+        snapshot,
+        metadata_image_url=metadata_image or snapshot.metadata_image_url,
+        dex_profile_paid=dex_orders.profile_paid,
+        dex_boost_amount_total=dex_orders.boost_amount_total or None,
+    )
 
     scanned_at = datetime.now(timezone.utc)
     first_call_line = await build_first_call_line(update, mint=mint, snapshot=snapshot)

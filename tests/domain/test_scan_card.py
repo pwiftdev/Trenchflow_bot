@@ -52,3 +52,31 @@ def test_format_scan_card_phanes_style_sections() -> None:
     assert "Top 10:" in text
     assert "🔥 First call" in text
     assert "DEX Paid:" in text
+
+
+def test_format_dex_paid_profile_and_boosts() -> None:
+    snapshot = TokenSnapshot(
+        mint="Mint1111111111111111111111111111111111111",
+        symbol="T",
+        name="T",
+        price_usd=1.0,
+        market_cap=1.0,
+        fdv=None,
+        liquidity_usd=None,
+        volume_h24=None,
+        price_change_h1=None,
+        price_change_h24=None,
+        txns_h1_buys=None,
+        txns_h1_sells=None,
+        pair_created_at_ms=None,
+        dex_id=None,
+        dex_profile_paid=True,
+        dex_boost_amount_total=10,
+    )
+    meta = ScanMeta(
+        scanner_display="x",
+        scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
+        chat_title=None,
+    )
+    text = format_scan_card(snapshot, meta, None)
+    assert "🟢 profile · 10 boost" in text

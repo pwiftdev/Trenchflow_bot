@@ -27,3 +27,5 @@ class TokenSnapshot:
     websites: list[tuple[str, str]] = field(default_factory=list)
     socials: list[tuple[str, str]] = field(default_factory=list)
     boosts_active: Optional[int] = None
+    dex_profile_paid: Optional[bool] = None
+    dex_boost_amount_total: Optional[int] = None

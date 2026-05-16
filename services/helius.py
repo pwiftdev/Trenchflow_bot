@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Any, Optional
 
 import httpx
@@ -35,7 +36,23 @@ class HeliusClient:
             log.warning("helius_security_failed", mint=mint, error=str(exc))
             raise HeliusError from exc
 
-        return _parse_security(account_info, largest)
+        security = _parse_security(account_info, largest)
+
+        holder_count = await self._fetch_holder_count(mint)
+        if holder_count is None:
+            return security
+        return dataclasses.replace(security, holder_count=holder_count)
+
+    async def _fetch_holder_count(self, mint: str) -> Optional[int]:
+        try:
+            result = await self._rpc_call(
+                "getTokenAccounts",
+                {"mint": mint, "limit": 1, "page": 1},
+            )
+        except Exception as exc:
+            log.warning("helius_holder_count_failed", mint=mint, error=str(exc))
+            return None
+        return _parse_holder_count(result)
 
     async def fetch_token_image_url(self, mint: str) -> Optional[str]:
         try:
@@ -184,6 +201,19 @@ def _format_supply_amount(amount: float) -> str:
     if amount >= 1_000:
         return f"{amount / 1_000:.0f}K"
     return f"{amount:.0f}"
+
+
+def _parse_holder_count(result: Any) -> Optional[int]:
+    if not isinstance(result, dict):
+        return None
+    total = result.get("total")
+    if total is None:
+        return None
+    try:
+        count = int(total)
+    except (TypeError, ValueError):
+        return None
+    return count if count >= 0 else None
 
 
 def _extract_largest_accounts(result: Any) -> list[tuple[str, float]]:
