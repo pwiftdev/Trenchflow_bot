@@ -16,6 +16,15 @@ def test_first_scan_line() -> None:
     assert "$147.40K" in line
 
 
+def test_caller_label_prefers_username() -> None:
+    from domain.call_pnl import caller_label
+
+    assert caller_label(user_id=1, full_name="Bakardi", username="bakardisol") == (
+        "Bakardi (@bakardisol)"
+    )
+    assert caller_label(user_id=1, username="bakardisol") == "@bakardisol"
+
+
 def test_repeat_scan_shows_pnl_since_call() -> None:
     first_at = datetime.now(timezone.utc) - timedelta(minutes=12)
     line = format_since_call_line(

@@ -28,8 +28,21 @@ def format_since_call_line(
     )
 
 
-def caller_label(*, user_id: Optional[int], display_name: str) -> str:
-    return display_name if display_name else (f"User {user_id}" if user_id else "Unknown")
+def caller_label(
+    *,
+    user_id: Optional[int],
+    full_name: Optional[str] = None,
+    username: Optional[str] = None,
+) -> str:
+    if full_name and username:
+        return f"{full_name} (@{username})"
+    if username:
+        return f"@{username}"
+    if full_name:
+        return full_name
+    if user_id is not None:
+        return f"User {user_id}"
+    return "Unknown"
 
 
 def _format_ago(when: datetime) -> str:

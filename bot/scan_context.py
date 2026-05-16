@@ -5,13 +5,29 @@ import structlog
 from telegram import Update
 
 from config.settings import get_settings
-from db.queries import fetch_first_scan_in_chat, record_scan_event as db_record_scan_event
+from db.queries import FirstScanRow, fetch_first_scan_in_chat, record_scan_event as db_record_scan_event
 from db.session import create_engine, create_session_factory
 from domain.call_pnl import caller_label, format_since_call_line
 from domain.scan_card import ScanMeta
 from domain.token_snapshot import TokenSnapshot
 
 log = structlog.get_logger()
+
+
+def _caller_label_from_user(user) -> str:
+    return caller_label(
+        user_id=user.id,
+        full_name=user.full_name,
+        username=user.username,
+    )
+
+
+def _caller_label_from_first_scan(first: FirstScanRow) -> str:
+    return caller_label(
+        user_id=first.user_id,
+        full_name=first.scanner_full_name,
+        username=first.scanner_username,
+    )
 
 
 def build_scan_meta(
@@ -26,10 +42,8 @@ def build_scan_meta(
 
     if user is None:
         scanner_display = "Unknown"
-    elif user.username:
-        scanner_display = f"{user.full_name} (@{user.username})"
     else:
-        scanner_display = user.full_name or f"User {user.id}"
+        scanner_display = _caller_label_from_user(user)
 
     chat_title: Optional[str] = None
     if chat and chat.type in ("group", "supergroup", "channel"):
@@ -54,10 +68,7 @@ async def build_first_call_line(
     if chat is None or user is None:
         return None
 
-    display = caller_label(
-        user_id=user.id,
-        display_name=user.full_name or (f"@{user.username}" if user.username else ""),
-    )
+    display = _caller_label_from_user(user)
 
     settings = get_settings()
     if not settings.database_url:
@@ -91,7 +102,7 @@ async def build_first_call_line(
             current_caller_label=display,
         )
 
-    first_label = caller_label(user_id=first.user_id, display_name=f"User {first.user_id}")
+    first_label = _caller_label_from_first_scan(first)
     return format_since_call_line(
         first_market_cap_usd=first.market_cap_usd,
         current_market_cap_usd=snapshot.market_cap,
@@ -132,6 +143,8 @@ async def record_scan_event(
                     scanned_at=scanned_at,
                     market_cap_usd=snapshot.market_cap,
                     price_usd=snapshot.price_usd,
+                    scanner_full_name=user.full_name if user else None,
+                    scanner_username=user.username if user else None,
                 )
                 await session.commit()
             except Exception as exc:

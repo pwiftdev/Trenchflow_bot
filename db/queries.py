@@ -15,6 +15,8 @@ class FirstScanRow:
     scanned_at: datetime
     market_cap_usd: Optional[float]
     price_usd: Optional[float]
+    scanner_full_name: Optional[str]
+    scanner_username: Optional[str]
 
 
 async def ping_database(session: AsyncSession) -> bool:
@@ -34,6 +36,8 @@ async def fetch_first_scan_in_chat(
             ScanEvent.scanned_at,
             ScanEvent.market_cap_usd,
             ScanEvent.price_usd,
+            ScanEvent.scanner_full_name,
+            ScanEvent.scanner_username,
         )
         .where(ScanEvent.ca == ca, ScanEvent.group_id == group_id)
         .order_by(ScanEvent.scanned_at.asc())
@@ -47,6 +51,8 @@ async def fetch_first_scan_in_chat(
         scanned_at=row[1],
         market_cap_usd=float(row[2]) if row[2] is not None else None,
         price_usd=float(row[3]) if row[3] is not None else None,
+        scanner_full_name=row[4],
+        scanner_username=row[5],
     )
 
 
@@ -60,6 +66,8 @@ async def record_scan_event(
     scanned_at: datetime,
     market_cap_usd: Optional[float],
     price_usd: Optional[float],
+    scanner_full_name: Optional[str],
+    scanner_username: Optional[str],
 ) -> None:
     group_values: dict = {"group_id": group_id}
     if group_name:
@@ -83,5 +91,7 @@ async def record_scan_event(
             scanned_at=scanned_at,
             market_cap_usd=market_cap_usd,
             price_usd=price_usd,
+            scanner_full_name=scanner_full_name,
+            scanner_username=scanner_username,
         )
     )
