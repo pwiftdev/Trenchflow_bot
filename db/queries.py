@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,6 +54,21 @@ async def fetch_first_scan_in_chat(
         scanner_full_name=row[4],
         scanner_username=row[5],
     )
+
+
+async def count_distinct_groups_for_ca(
+    session: AsyncSession,
+    *,
+    ca: str,
+    since: datetime,
+) -> int:
+    result = await session.execute(
+        select(func.count(func.distinct(ScanEvent.group_id))).where(
+            ScanEvent.ca == ca,
+            ScanEvent.scanned_at >= since,
+        )
+    )
+    return int(result.scalar_one() or 0)
 
 
 async def record_scan_event(

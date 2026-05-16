@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     )
 
     telegram_bot_token: str = Field(validation_alias="TELEGRAM_BOT_TOKEN")
-    founders_chat_id: Optional[int] = Field(default=None, validation_alias="FOUNDERS_CHAT_ID")
+    founders_chat_id: Optional[int] = Field(
+        default=None,
+        validation_alias="FOUNDERS_CHAT_ID",
+        description="Alpha / founders feed — every group scan is posted here.",
+    )
 
     helius_api_key: Optional[str] = Field(default=None, validation_alias="HELIUS_API_KEY")
     helius_timeout_seconds: float = Field(

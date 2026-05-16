@@ -1,6 +1,7 @@
 from telegram.ext import Application, CommandHandler
 
 from bot.handlers.dbtest import dbtest_command
+from bot.handlers.founderstest import founderstest_command
 from bot.handlers.ping import ping_command
 from bot.handlers.scan import scan_command
 from bot.handlers.vpstest import vpstest_command
@@ -16,5 +17,6 @@ def build_application(settings: Settings) -> Application:
     application.add_handler(CommandHandler("ping", ping_command))
     application.add_handler(CommandHandler("vpstest", vpstest_command))
     application.add_handler(CommandHandler("dbtest", dbtest_command))
+    application.add_handler(CommandHandler("founderstest", founderstest_command))
     application.add_handler(CommandHandler("scan", scan_command))
     return application

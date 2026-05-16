@@ -10,8 +10,36 @@ When you ship something, add an entry here and update the **Status** line in `CL
 
 ## Unreleased
 
+- Auto-detect CA paste in group messages (regex + base58 validate).
+- Birdeye price fallback; Redis 30s CA-card cache.
+- Holder count, sniper %, fresh-wallet %, cluster count on card (Helius-heavy).
 - Prod webhook (`ENV=prod`, domain + HTTPS).
-- Phase 1: `/scan` + CA card (DexScreener → Birdeye → Helius).
+- Cross-group scan threshold → founders console.
+
+## 2026-05-16 — Phase 1 — Alpha feed (founders group)
+
+- Every `/scan` in a group/supergroup/channel is mirrored to `FOUNDERS_CHAT_ID`.
+- Alert: group name, token, MC/price/LP/vol at scan, first/since-call line, cross-group count (30m).
+- Skips private chats and the founders chat itself. Inline DS/DEF/GT links on the alert.
+- `/founderstest` command to verify founders chat connectivity.
+
+## 2026-05-16 — Phase 1 — Repeat-scan caller label
+
+- Migration `003`: `scanner_full_name`, `scanner_username` on `scan_events`.
+- Repeat “since call” line shows `Bakardi (@bakardisol)` instead of numeric `User {id}`.
+
+## 2026-05-16 — Phase 1 — First call / since-call PnL
+
+- `/scan` logs `market_cap_usd` + `price_usd` per scan (migration `002`).
+- First scan: `🔥 First call … @ $MC`; repeat: `📈 Since call @ $X → $Y (+Z%)` + time since first call.
+- Lookup first scan in chat **before** inserting new row.
+
+## 2026-05-16 — Phase 1 — `/scan` CA card (DexScreener + Helius)
+
+- `services/dexscreener.py` — `token-pairs/v1` first (fixes stale MC on graduated pump.fun tokens).
+- `domain/scan_card.py` — Phanes-style tree caption; inline link row (`bot/scan_keyboard.py`).
+- `services/helius.py` — mint authority, freeze authority, top-10 holder % (when `HELIUS_API_KEY` set).
+- `bot/handlers/scan.py` — photo banner + HTML caption.
 
 ## 2026-05-15 — Phase 0 — Supabase on VPS (`/dbtest`)
 

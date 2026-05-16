@@ -8,9 +8,10 @@ This file is loaded into every Cursor / Claude session. Keep it tight and curren
 
 ## Status
 
-- **Current phase:** Phase 0 — Foundations (complete) → Phase 1 next
-- **Last working feature:** Supabase live on VPS — Alembic `001` applied, `/dbtest` → `DB connected` (Session pooler, IPv4). Bot on Hetzner + systemd. Repo: https://github.com/pwiftdev/Trenchflow_bot
-- **Next task:** Phase 1 — `/scan` + DexScreener price for one CA. Optional: prod webhook (`ENV=prod`, domain + HTTPS).
+- **Current phase:** Phase 1 — CA card + scan logging (in progress; core path works in prod)
+- **Last working feature:** Alpha feed — each group `/scan` posts to `FOUNDERS_CHAT_ID` (token, MC at scan, scanner, first/since-call, “N groups in 30m”). `/founderstest` for connectivity.
+- **Next task:** Auto-detect CA on paste (no `/scan` prefix). Then: Birdeye fallback, Redis CA-card cache, holder/sniper/fresh-wallet metrics (Helius), prod webhook (`ENV=prod`, domain + HTTPS).
+- **Deploy:** Hetzner + systemd `trenchflow`, polling (`ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
 
 See `CHANGELOG.md` for what shipped previously.
 

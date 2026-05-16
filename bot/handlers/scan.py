@@ -5,6 +5,7 @@ from typing import Optional
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from bot.alpha_notify import notify_founders_scan
 from bot.scan_context import build_first_call_line, build_scan_meta, record_scan_event
 from bot.scan_keyboard import build_scan_keyboard
 from config.settings import get_settings
@@ -91,6 +92,13 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     banner = snapshot.header_image_url or snapshot.image_url
 
     await record_scan_event(update, mint=mint, scanned_at=scanned_at, snapshot=snapshot)
+    await notify_founders_scan(
+        context.bot,
+        update=update,
+        snapshot=snapshot,
+        meta=meta,
+        scanned_at=scanned_at,
+    )
 
     if banner:
         await update.message.reply_photo(
