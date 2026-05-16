@@ -9,8 +9,10 @@ This file is loaded into every Cursor / Claude session. Keep it tight and curren
 ## Status
 
 - **Current phase:** Phase 1 — CA card + scan logging (in progress; core path works in prod)
-- **Last working feature:** Alpha feed — each group `/scan` posts to `FOUNDERS_CHAT_ID` (token, MC at scan, scanner, first/since-call, “N groups in 30m”). `/founderstest` for connectivity.
-- **Next task:** Auto-detect CA on paste (no `/scan` prefix). Then: Birdeye fallback, Redis CA-card cache, holder/sniper/fresh-wallet metrics (Helius), prod webhook (`ENV=prod`, domain + HTTPS).
+- **Last working feature:** **DEX Paid** on scan card — DexScreener `orders/v1` + approved `tokenProfile` → `🟢 Paid`, else `🔴`. Verified in prod.
+- **Known issue (revise later):** **Holder count** (`👥` subline + “total” in security) — Helius `getTokenAccounts` `total` not showing correctly in prod; do not treat as done.
+- **Next task:** Fix holder count. Then: auto-detect CA on paste, Birdeye fallback, Redis cache, fresh/sniper/cluster metrics, prod webhook.
+- **Also shipped:** Alpha feed → `FOUNDERS_CHAT_ID`, metadata token image fallback, command menu + `/help`, first/since-call PnL.
 - **Deploy:** Hetzner + systemd `trenchflow`, polling (`ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
 
 See `CHANGELOG.md` for what shipped previously.

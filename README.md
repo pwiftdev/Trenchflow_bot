@@ -2,7 +2,7 @@
 
 A Solana-native Telegram bot for crypto trading groups. Replaces Rick + a wallet tracker + a holder bot with one cleaner product.
 
-**Status:** Phase 1 in progress — `/scan` CA card + first/since-call PnL live on VPS. Repo: [pwiftdev/Trenchflow_bot](https://github.com/pwiftdev/Trenchflow_bot). See `CLAUDE.md` **Status** for next task.
+**Status:** Phase 1 — `/scan` live on VPS; **DEX Paid verified**; **holder count broken (revisit)**. See `CLAUDE.md` **Status**.
 
 ## What it does
 

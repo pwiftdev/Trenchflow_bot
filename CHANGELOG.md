@@ -10,11 +10,22 @@ When you ship something, add an entry here and update the **Status** line in `CL
 
 ## Unreleased
 
+- **Fix holder count** on scan card (Helius `getTokenAccounts` — implemented but not working in prod; revisit).
 - Auto-detect CA paste in group messages (regex + base58 validate).
 - Birdeye price fallback; Redis 30s CA-card cache.
-- Holder count, sniper %, fresh-wallet %, cluster count on card (Helius-heavy).
+- Sniper %, fresh-wallet %, cluster count on card (Helius-heavy).
 - Prod webhook (`ENV=prod`, domain + HTTPS).
 - Cross-group scan threshold → founders console.
+
+## 2026-05-16 — Phase 1 — DEX Paid on scan card (verified)
+
+- DexScreener `GET /orders/v1/{chain}/{mint}` — `tokenProfile` + `status: approved` → `🟢 Paid`, else `🔴`.
+- **Verified working in prod.**
+
+## 2026-05-16 — Phase 1 — Holder count (not verified — revisit)
+
+- Helius DAS `getTokenAccounts` → `total` wired to subline + security block.
+- **Not working reliably in prod** — leave as known issue; fix in a later pass.
 
 ## 2026-05-16 — Phase 1 — Alpha feed (founders group)
 
