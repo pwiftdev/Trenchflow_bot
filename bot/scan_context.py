@@ -7,6 +7,7 @@ from telegram import Update
 from config.settings import get_settings
 from db.queries import fetch_first_scan_in_chat, record_scan_event as db_record_scan_event
 from db.session import create_engine, create_session_factory
+from domain.call_pnl import caller_label, format_since_call_line
 from domain.scan_card import ScanMeta
 from domain.token_snapshot import TokenSnapshot
 
@@ -53,10 +54,21 @@ async def build_first_call_line(
     if chat is None or user is None:
         return None
 
+    display = caller_label(
+        user_id=user.id,
+        display_name=user.full_name or (f"@{user.username}" if user.username else ""),
+    )
+
     settings = get_settings()
     if not settings.database_url:
-        mcap = _fmt_usd(snapshot.market_cap)
-        return f"🔥 First call {user.full_name} @ {mcap}"
+        return format_since_call_line(
+            first_market_cap_usd=None,
+            current_market_cap_usd=snapshot.market_cap,
+            first_scanned_at=datetime.now().astimezone(),
+            first_caller_label=display,
+            is_first_scan=True,
+            current_caller_label=display,
+        )
 
     engine = create_engine(settings)
     try:
@@ -64,21 +76,29 @@ async def build_first_call_line(
         async with session_factory() as session:
             first = await fetch_first_scan_in_chat(session, ca=mint, group_id=chat.id)
     except Exception as exc:
-        log.warning("first_call_lookup_failed", error=str(exc))
+        log.warning("first_call_lookup_failed", error=str(exc), ca=mint, group_id=chat.id)
         return None
     finally:
         await engine.dispose()
 
-    mcap = _fmt_usd(snapshot.market_cap)
     if first is None:
-        return f"🔥 First call {user.full_name} @ {mcap}"
+        return format_since_call_line(
+            first_market_cap_usd=None,
+            current_market_cap_usd=snapshot.market_cap,
+            first_scanned_at=datetime.now().astimezone(),
+            first_caller_label=display,
+            is_first_scan=True,
+            current_caller_label=display,
+        )
 
-    if first.user_id == user.id:
-        return f"🔥 First call you @ {mcap}"
-
-    return (
-        f"🔥 First call User {first.user_id} · "
-        f"{first.scanned_at.strftime('%Y-%m-%d %H:%M UTC')}"
+    first_label = caller_label(user_id=first.user_id, display_name=f"User {first.user_id}")
+    return format_since_call_line(
+        first_market_cap_usd=first.market_cap_usd,
+        current_market_cap_usd=snapshot.market_cap,
+        first_scanned_at=first.scanned_at,
+        first_caller_label=first_label,
+        is_first_scan=False,
+        current_caller_label=display,
     )
 
 
@@ -87,6 +107,7 @@ async def record_scan_event(
     *,
     mint: str,
     scanned_at: datetime,
+    snapshot: TokenSnapshot,
 ) -> None:
     settings = get_settings()
     if not settings.database_url:
@@ -109,20 +130,17 @@ async def record_scan_event(
                     group_name=chat.title,
                     user_id=user.id if user else None,
                     scanned_at=scanned_at,
+                    market_cap_usd=snapshot.market_cap,
+                    price_usd=snapshot.price_usd,
                 )
                 await session.commit()
             except Exception as exc:
                 await session.rollback()
-                log.warning("scan_event_log_failed", error=str(exc), ca=mint)
+                log.warning(
+                    "scan_event_log_failed",
+                    error=str(exc),
+                    ca=mint,
+                    group_id=chat.id,
+                )
     finally:
         await engine.dispose()
-
-
-def _fmt_usd(value: Optional[float]) -> str:
-    if value is None:
-        return "—"
-    if value >= 1_000_000:
-        return f"${value / 1_000_000:.2f}M"
-    if value >= 1_000:
-        return f"${value / 1_000:.2f}K"
-    return f"${value:.2f}"

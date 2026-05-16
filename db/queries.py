@@ -13,6 +13,8 @@ from db.models import Group, ScanEvent
 class FirstScanRow:
     user_id: Optional[int]
     scanned_at: datetime
+    market_cap_usd: Optional[float]
+    price_usd: Optional[float]
 
 
 async def ping_database(session: AsyncSession) -> bool:
@@ -27,7 +29,12 @@ async def fetch_first_scan_in_chat(
     group_id: int,
 ) -> Optional[FirstScanRow]:
     result = await session.execute(
-        select(ScanEvent.user_id, ScanEvent.scanned_at)
+        select(
+            ScanEvent.user_id,
+            ScanEvent.scanned_at,
+            ScanEvent.market_cap_usd,
+            ScanEvent.price_usd,
+        )
         .where(ScanEvent.ca == ca, ScanEvent.group_id == group_id)
         .order_by(ScanEvent.scanned_at.asc())
         .limit(1)
@@ -35,7 +42,12 @@ async def fetch_first_scan_in_chat(
     row = result.first()
     if row is None:
         return None
-    return FirstScanRow(user_id=row[0], scanned_at=row[1])
+    return FirstScanRow(
+        user_id=row[0],
+        scanned_at=row[1],
+        market_cap_usd=float(row[2]) if row[2] is not None else None,
+        price_usd=float(row[3]) if row[3] is not None else None,
+    )
 
 
 async def record_scan_event(
@@ -46,6 +58,8 @@ async def record_scan_event(
     group_name: Optional[str],
     user_id: Optional[int],
     scanned_at: datetime,
+    market_cap_usd: Optional[float],
+    price_usd: Optional[float],
 ) -> None:
     group_values: dict = {"group_id": group_id}
     if group_name:
@@ -67,5 +81,7 @@ async def record_scan_event(
             group_id=group_id,
             user_id=user_id,
             scanned_at=scanned_at,
+            market_cap_usd=market_cap_usd,
+            price_usd=price_usd,
         )
     )

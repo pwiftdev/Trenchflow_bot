@@ -90,7 +90,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     keyboard = build_scan_keyboard(snapshot)
     banner = snapshot.header_image_url or snapshot.image_url
 
-    await record_scan_event(update, mint=mint, scanned_at=scanned_at)
+    await record_scan_event(update, mint=mint, scanned_at=scanned_at, snapshot=snapshot)
 
     if banner:
         await update.message.reply_photo(

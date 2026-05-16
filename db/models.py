@@ -88,6 +88,8 @@ class ScanEvent(Base):
         BigInteger, ForeignKey("groups.group_id", ondelete="CASCADE"), nullable=False
     )
     user_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    market_cap_usd: Mapped[Optional[float]] = mapped_column(Numeric(18, 2))
+    price_usd: Mapped[Optional[float]] = mapped_column(Numeric(24, 12))
     scanned_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
