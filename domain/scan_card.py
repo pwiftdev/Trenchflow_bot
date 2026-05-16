@@ -139,18 +139,9 @@ def _format_security(
 
 
 def _format_dex_paid(snapshot: TokenSnapshot) -> str:
-    profile_paid = snapshot.dex_profile_paid
-    boost_total = snapshot.dex_boost_amount_total
-
-    if profile_paid and boost_total:
-        return f"🟢 profile · {boost_total} boost"
-    if profile_paid:
-        return "🟢 profile"
-    if boost_total:
-        return f"🔵 {boost_total} boost"
-    if (snapshot.boosts_active or 0) > 0:
-        return "🔵 active boost"
-    return "—"
+    if snapshot.dex_profile_paid:
+        return "🟢 Paid"
+    return "🔴"
 
 
 def _authority_label(renounced: Optional[bool], *, good_when_true: bool) -> str:

@@ -54,8 +54,13 @@ def test_format_scan_card_phanes_style_sections() -> None:
     assert "DEX Paid:" in text
 
 
-def test_format_dex_paid_profile_and_boosts() -> None:
-    snapshot = TokenSnapshot(
+def test_format_dex_paid_green_when_paid_red_when_not() -> None:
+    meta = ScanMeta(
+        scanner_display="x",
+        scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
+        chat_title=None,
+    )
+    base = dict(
         mint="Mint1111111111111111111111111111111111111",
         symbol="T",
         name="T",
@@ -70,13 +75,16 @@ def test_format_dex_paid_profile_and_boosts() -> None:
         txns_h1_sells=None,
         pair_created_at_ms=None,
         dex_id=None,
-        dex_profile_paid=True,
-        dex_boost_amount_total=10,
     )
-    meta = ScanMeta(
-        scanner_display="x",
-        scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
-        chat_title=None,
+    paid = format_scan_card(
+        TokenSnapshot(**base, dex_profile_paid=True),
+        meta,
+        None,
     )
-    text = format_scan_card(snapshot, meta, None)
-    assert "🟢 profile · 10 boost" in text
+    unpaid = format_scan_card(
+        TokenSnapshot(**base, dex_profile_paid=False),
+        meta,
+        None,
+    )
+    assert "└ DEX Paid: 🟢 Paid" in paid
+    assert "└ DEX Paid: 🔴" in unpaid
