@@ -11,7 +11,13 @@ When you ship something, add an entry here and update the **Status** line in `CL
 ## Unreleased
 
 - Prod webhook (`ENV=prod`, domain + HTTPS).
-- Supabase Postgres + first Alembic migration.
+- Phase 1: `/scan` + CA card (DexScreener → Birdeye → Helius).
+
+## 2026-05-15 — Phase 0 — Supabase on VPS (`/dbtest`)
+
+- Initial schema via Alembic (`tokens`, `groups`, `wallets`, `tracked_wallets`, `scan_events`, `swaps`).
+- Session pooler `DATABASE_URL` (IPv4) on Mac + Hetzner.
+- **`/dbtest` → `DB connected`** verified in Telegram from production VPS.
 
 ## 2026-05-15 — Phase 0 — `/vpstest` deploy check
 
