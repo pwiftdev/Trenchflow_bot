@@ -14,7 +14,7 @@ PUBLIC_COMMANDS: tuple[BotCommand, ...] = (
 )
 
 FOUNDERS_COMMANDS: tuple[BotCommand, ...] = (
-    BotCommand("founderstest", "Post a test message to the alpha feed"),
+    BotCommand("founderstest", "Verify bot can post in this chat"),
 )
 
 

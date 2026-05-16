@@ -13,9 +13,6 @@ You can also paste a Solana contract address (auto-detect coming soon).
 <b>Other</b>
 /help — This message
 
-<b>Founders / alpha feed</b> (alpha group only)
-/founderstest — Test posting to the alpha feed
-
 <i>Tip: add the bot to your group as admin so it can reply to scans.</i>"""
 
 

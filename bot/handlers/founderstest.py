@@ -18,10 +18,7 @@ async def founderstest_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     bot = context.bot
     chat_id = settings.founders_chat_id
-    text = (
-        "Trenchflow alpha feed test\n"
-        "If you see this, the bot can post to this chat."
-    )
+    text = "Trenchflow test — bot can post in this chat."
     try:
         await bot.send_message(chat_id=chat_id, text=text)
     except Exception as exc:
@@ -29,4 +26,4 @@ async def founderstest_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"Send failed: {exc}")
         return
 
-    await update.message.reply_text(f"Sent test message to founders chat ({chat_id}).")
+    await update.message.reply_text("Test message sent.")
