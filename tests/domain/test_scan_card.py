@@ -1,37 +1,54 @@
 from datetime import datetime, timezone
 
 from domain.scan_card import ScanMeta, format_scan_card
+from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
 
 
-def test_format_scan_card_includes_scanner_and_mcap() -> None:
+def test_format_scan_card_phanes_style_sections() -> None:
     snapshot = TokenSnapshot(
         mint="MintAddress1111111111111111111111111111111111",
-        symbol="TEST",
-        name="Test Token",
-        price_usd=0.0012,
-        market_cap=1_500_000,
-        fdv=2_000_000,
-        liquidity_usd=250_000,
-        volume_h24=80_000,
-        price_change_h24=12.5,
-        dex_id="raydium",
+        symbol="UNG",
+        name="Avatard Ung",
+        price_usd=0.0001473,
+        market_cap=147_400,
+        fdv=200_000,
+        liquidity_usd=15_600,
+        volume_h24=605_300,
+        price_change_h1=21.0,
+        price_change_h24=208.0,
+        txns_h1_buys=3200,
+        txns_h1_sells=2600,
+        pair_created_at_ms=1_700_000_000_000,
+        dex_id="pumpfun",
+        labels=["pump"],
         pair_url="https://dexscreener.com/solana/abc",
         image_url="https://example.com/img.png",
+        header_image_url="https://example.com/header.png",
         websites=[("Website", "https://example.com")],
         socials=[("twitter", "https://x.com/test")],
+        boosts_active=1,
+    )
+    security = SecuritySnapshot(
+        mint_renounced=True,
+        freeze_renounced=True,
+        top10_holder_pct=7.0,
+        holder_count=1400,
+        supply_ui="1B",
     )
     meta = ScanMeta(
         scanner_display="Alice (@alice)",
-        scanned_at=datetime(2026, 5, 15, 20, 0, tzinfo=timezone.utc),
+        scanned_at=datetime(2026, 5, 16, 13, 18, tzinfo=timezone.utc),
         chat_title="Alpha Group",
+        first_call_line="🔥 First call Alice @ $147.4K",
     )
 
-    text = format_scan_card(snapshot, meta)
+    text = format_scan_card(snapshot, meta, security)
 
-    assert "$TEST" in text
-    assert "MCap at scan" in text
-    assert "$1.50M" in text
-    assert "Alice (@alice)" in text
-    assert "Alpha Group" in text
-    assert "DexScreener" in text
+    assert "📊" in text
+    assert "├ USD:" in text
+    assert "├ 1H:" in text
+    assert "🔒" in text
+    assert "Top 10:" in text
+    assert "🔥 First call" in text
+    assert "DEX Paid:" in text

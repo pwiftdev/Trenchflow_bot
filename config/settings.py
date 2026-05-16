@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     founders_chat_id: Optional[int] = Field(default=None, validation_alias="FOUNDERS_CHAT_ID")
 
     helius_api_key: Optional[str] = Field(default=None, validation_alias="HELIUS_API_KEY")
+    helius_timeout_seconds: float = Field(
+        default=10.0,
+        validation_alias="HELIUS_TIMEOUT_SECONDS",
+    )
     helius_webhook_secret: Optional[str] = Field(
         default=None, validation_alias="HELIUS_WEBHOOK_SECRET"
     )

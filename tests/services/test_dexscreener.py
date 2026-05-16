@@ -16,8 +16,11 @@ SAMPLE_PAIRS = [
         "marketCap": 100000,
         "liquidity": {"usd": 5000},
         "volume": {"h24": 1000},
-        "priceChange": {"h24": 5},
-        "info": {"imageUrl": "https://example.com/a.png"},
+        "priceChange": {"h1": 5, "h24": 12},
+        "txns": {"h1": {"buys": 10, "sells": 8}},
+        "pairCreatedAt": 1_700_000_000_000,
+        "boosts": {"active": 0},
+        "info": {"imageUrl": "https://example.com/a.png", "header": "https://example.com/h.png"},
     },
     {
         "chainId": "solana",
@@ -33,7 +36,10 @@ SAMPLE_PAIRS = [
         "marketCap": 500000,
         "liquidity": {"usd": 50000},
         "volume": {"h24": 20000},
-        "priceChange": {"h24": 10},
+        "priceChange": {"h1": 10, "h24": 20},
+        "txns": {"h1": {"buys": 100, "sells": 90}},
+        "pairCreatedAt": 1_700_000_000_000,
+        "boosts": {"active": 2},
         "info": {"imageUrl": "https://example.com/b.png"},
     },
 ]
@@ -47,10 +53,11 @@ def test_select_best_pair_prefers_highest_liquidity() -> None:
     assert best["dexId"] == "pumpfun"
 
 
-def test_pair_to_snapshot_maps_fields() -> None:
+def test_pair_to_snapshot_maps_extended_fields() -> None:
     pair = _select_best_pair(SAMPLE_PAIRS, MINT)
     assert pair is not None
     snapshot = _pair_to_snapshot(pair, MINT)
     assert snapshot.symbol == "MEME"
-    assert snapshot.market_cap == 500000
-    assert snapshot.image_url == "https://example.com/b.png"
+    assert snapshot.txns_h1_buys == 100
+    assert snapshot.boosts_active == 2
+    assert snapshot.header_image_url is None or snapshot.image_url

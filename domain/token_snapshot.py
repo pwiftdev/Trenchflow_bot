@@ -12,9 +12,16 @@ class TokenSnapshot:
     fdv: Optional[float]
     liquidity_usd: Optional[float]
     volume_h24: Optional[float]
+    price_change_h1: Optional[float]
     price_change_h24: Optional[float]
+    txns_h1_buys: Optional[int]
+    txns_h1_sells: Optional[int]
+    pair_created_at_ms: Optional[int]
     dex_id: Optional[str]
-    pair_url: Optional[str]
-    image_url: Optional[str]
+    labels: list[str] = field(default_factory=list)
+    pair_url: Optional[str] = None
+    image_url: Optional[str] = None
+    header_image_url: Optional[str] = None
     websites: list[tuple[str, str]] = field(default_factory=list)
     socials: list[tuple[str, str]] = field(default_factory=list)
+    boosts_active: Optional[int] = None

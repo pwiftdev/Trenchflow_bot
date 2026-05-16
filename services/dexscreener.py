@@ -82,7 +82,7 @@ def _pair_to_snapshot(pair: dict[str, Any], mint: str) -> TokenSnapshot:
     for site in info.get("websites") or []:
         site_url = site.get("url")
         if site_url:
-            label = site.get("label") or "Website"
+            label = site.get("label") or "Web"
             websites.append((str(label), str(site_url)))
 
     socials: list[tuple[str, str]] = []
@@ -95,6 +95,10 @@ def _pair_to_snapshot(pair: dict[str, Any], mint: str) -> TokenSnapshot:
     volume = pair.get("volume") or {}
     price_change = pair.get("priceChange") or {}
     liquidity = pair.get("liquidity") or {}
+    txns_h1 = (pair.get("txns") or {}).get("h1") or {}
+    boosts = pair.get("boosts") or {}
+
+    labels = [str(label) for label in (pair.get("labels") or [])]
 
     return TokenSnapshot(
         mint=mint,
@@ -105,12 +109,19 @@ def _pair_to_snapshot(pair: dict[str, Any], mint: str) -> TokenSnapshot:
         fdv=_to_float(pair.get("fdv")),
         liquidity_usd=_to_float(liquidity.get("usd")),
         volume_h24=_to_float(volume.get("h24")),
+        price_change_h1=_to_float(price_change.get("h1")),
         price_change_h24=_to_float(price_change.get("h24")),
+        txns_h1_buys=_to_int(txns_h1.get("buys")),
+        txns_h1_sells=_to_int(txns_h1.get("sells")),
+        pair_created_at_ms=_to_int(pair.get("pairCreatedAt")),
         dex_id=pair.get("dexId"),
+        labels=labels,
         pair_url=pair.get("url"),
         image_url=info.get("imageUrl"),
+        header_image_url=info.get("header"),
         websites=websites,
         socials=socials,
+        boosts_active=_to_int(boosts.get("active")),
     )
 
 
@@ -119,5 +130,14 @@ def _to_float(value: Any) -> Optional[float]:
         return None
     try:
         return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
     except (TypeError, ValueError):
         return None
