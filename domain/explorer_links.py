@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 def solscan_token_url(mint: str) -> str:
     return f"https://solscan.io/token/{mint}"
 
