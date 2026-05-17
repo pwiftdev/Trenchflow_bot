@@ -76,7 +76,7 @@ async def notify_founders_scan(
         cross_group_count_30m=cross_group_count,
     )
     text = format_alpha_scan_alert(snapshot, ctx)
-    keyboard = build_scan_keyboard(snapshot.mint)
+    keyboard = build_scan_keyboard(snapshot)
 
     founders_chat_id = settings.founders_chat_id
     assert founders_chat_id is not None

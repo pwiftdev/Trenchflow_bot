@@ -1,15 +1,26 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from domain import explorer_links
+from domain.token_snapshot import TokenSnapshot
+
 REFRESH_PREFIX = "scan_refresh:"
 DELETE_CALLBACK = "scan_delete"
 
 
-def build_scan_keyboard(mint: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton("REFRESH", callback_data=f"{REFRESH_PREFIX}{mint}"),
-                InlineKeyboardButton("DELETE", callback_data=DELETE_CALLBACK),
-            ],
-        ]
-    )
+def build_scan_keyboard(snapshot: TokenSnapshot) -> InlineKeyboardMarkup:
+    mint = snapshot.mint
+    dex_url = snapshot.pair_url or explorer_links.dexscreener_token_url(mint)
+
+    explorer_row = [
+        InlineKeyboardButton("DEF", url=explorer_links.defined_fi_url(mint)),
+        InlineKeyboardButton("DS", url=dex_url),
+        InlineKeyboardButton("GT", url=explorer_links.gecko_terminal_url(mint)),
+        InlineKeyboardButton("EXP", url=explorer_links.solscan_token_url(mint)),
+        InlineKeyboardButton("X", url=explorer_links.x_search_url(snapshot.symbol, mint)),
+    ]
+    action_row = [
+        InlineKeyboardButton("REFRESH", callback_data=f"{REFRESH_PREFIX}{mint}"),
+        InlineKeyboardButton("DELETE", callback_data=DELETE_CALLBACK),
+    ]
+
+    return InlineKeyboardMarkup([explorer_row, action_row])

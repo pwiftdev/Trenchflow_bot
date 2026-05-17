@@ -44,6 +44,6 @@ async def scan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await edit_scan_card(
         query.message,
         caption=result.caption,
-        keyboard=build_scan_keyboard(mint),
+        keyboard=build_scan_keyboard(result.snapshot),
         snapshot=result.snapshot,
     )

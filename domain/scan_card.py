@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Optional
 
-from domain import explorer_links
 from domain.telegram_caption import href_attr
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
@@ -53,8 +52,6 @@ def format_scan_card(
     if trench_block:
         blocks.extend(["", trench_block])
 
-    blocks.extend(["", _format_explorer_row(snapshot)])
-
     if meta.first_call_line:
         blocks.extend(["", escape(meta.first_call_line)])
 
@@ -98,7 +95,7 @@ def _format_socials(snapshot: TokenSnapshot) -> Optional[str]:
     links = _token_social_links(snapshot)
     if not links:
         return None
-    return "🔗\n" + f"{_LAST} " + " · ".join(links)
+    return "🔗 Socials\n" + f"{_LAST} " + " · ".join(links)
 
 
 def _token_social_links(snapshot: TokenSnapshot) -> list[str]:
@@ -106,24 +103,12 @@ def _token_social_links(snapshot: TokenSnapshot) -> list[str]:
     for label, url in snapshot.socials[:4]:
         short = label.lower()
         if "twitter" in short or short == "x":
-            links.append(f'<a href="{href_attr(url)}">𝕏</a>')
+            links.append(f'<a href="{href_attr(url)}">Twitter</a>')
         else:
             links.append(f'<a href="{href_attr(url)}">{escape(label)}</a>')
     for label, url in snapshot.websites[:2]:
         links.append(f'<a href="{href_attr(url)}">{escape(label)}</a>')
     return links
-
-
-def _format_explorer_row(snapshot: TokenSnapshot) -> str:
-    mint = snapshot.mint
-    parts = [
-        f'<a href="{href_attr(explorer_links.defined_fi_url(mint))}">DEF</a>',
-        f'<a href="{href_attr(explorer_links.dexscreener_token_url(mint))}">DS</a>',
-        f'<a href="{href_attr(explorer_links.gecko_terminal_url(mint))}">GT</a>',
-        f'<a href="{href_attr(explorer_links.solscan_token_url(mint))}">EXP</a>',
-        f'<a href="{href_attr(explorer_links.x_search_url(snapshot.symbol, mint))}">𝕏</a>',
-    ]
-    return "•".join(parts)
 
 
 def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
@@ -149,24 +134,26 @@ def _format_security(
     snapshot: TokenSnapshot,
     security: Optional[SecuritySnapshot],
 ) -> str:
-    lines = ["🔒 Security"]
+    rows: list[str] = []
 
     if security is None:
-        lines.append(f"{_BRANCH} T10 —")
-        lines.append(f"{_LAST} DP {_format_dex_paid(snapshot)}")
-        return "\n".join(lines)
+        rows.extend(["T10 —", "Holders —", "DS —", f"DP {_format_dex_paid(snapshot)}"])
+    else:
+        if security.fresh_1d_pct is not None or security.fresh_7d_pct is not None:
+            f1 = _fmt_pct(security.fresh_1d_pct) if security.fresh_1d_pct is not None else "—"
+            f7 = _fmt_pct(security.fresh_7d_pct) if security.fresh_7d_pct is not None else "—"
+            rows.append(f"Fresh {f1} 1D | {f7} 7D")
 
-    if security.fresh_1d_pct is not None or security.fresh_7d_pct is not None:
-        f1 = _fmt_pct(security.fresh_1d_pct) if security.fresh_1d_pct is not None else "—"
-        f7 = _fmt_pct(security.fresh_7d_pct) if security.fresh_7d_pct is not None else "—"
-        lines.append(f"{_BRANCH} Fresh {f1}/{f7}")
+        top10 = _fmt_pct(security.top10_holder_pct) if security.top10_holder_pct is not None else "—"
+        rows.append(f"T10 {top10}")
+        rows.append(f"Holders {_fmt_count(security.holder_count)}")
+        rows.append(f"DS {_format_dev_sold(security)}")
+        rows.append(f"DP {_format_dex_paid(snapshot)}")
 
-    top10 = _fmt_pct(security.top10_holder_pct) if security.top10_holder_pct is not None else "—"
-    holders = _fmt_count(security.holder_count)
-    lines.append(f"{_BRANCH} T10 {top10}|{holders}")
-
-    lines.append(f"{_BRANCH} DS {_format_dev_sold(security)}")
-    lines.append(f"{_LAST} DP {_format_dex_paid(snapshot)}")
+    lines = ["🔒 Security"]
+    for index, content in enumerate(rows):
+        branch = _LAST if index == len(rows) - 1 else _BRANCH
+        lines.append(f"{branch} {content}")
     return "\n".join(lines)
 
 

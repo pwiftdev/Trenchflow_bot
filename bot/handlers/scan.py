@@ -65,7 +65,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     delivered = await reply_scan_card(
         update.message,
         caption=result.caption,
-        keyboard=build_scan_keyboard(mint),
+        keyboard=build_scan_keyboard(result.snapshot),
         snapshot=result.snapshot,
     )
     if not delivered:

@@ -67,11 +67,14 @@ def test_format_scan_card_phanes_style_tree() -> None:
     assert "├ MC" in text
     assert "🟩" in text and "🟥" in text
     assert "🔒 Security" in text
-    assert "T10" in text
-    assert " DS " in text
-    assert " DP " in text
-    assert "🔗" in text
-    assert ">DEF</a>" in text
+    security_block = text.split("🔒 Security", 1)[1].split("\n\n", 1)[0]
+    assert "├ T10" in security_block
+    assert "├ Holders" in security_block
+    assert "├ DS" in security_block
+    assert "└ DP" in security_block
+    assert "🔗 Socials" in text
+    assert ">Twitter</a>" in text
+    assert ">DEF</a>" not in text
     assert "Bundlers" in text
     assert "Insiders" not in text
     trench = text.split("⚠️\n", 1)[1].split("\n\n", 1)[0]
