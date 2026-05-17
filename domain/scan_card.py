@@ -121,8 +121,9 @@ def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
         row = by_tag.get(tag)
         if row is None:
             continue
-        supply = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "0%"
-        rows.append(f"{escape(row.label)} {supply} supply")
+        supply = _fmt_trench_supply_pct(row.percent_of_supply)
+        suffix = f" · {_fmt_count(row.holder_count)} wallets" if row.holder_count > 0 else ""
+        rows.append(f"{escape(row.label)} {supply} supply{suffix}")
 
     if not rows:
         return None
@@ -235,6 +236,12 @@ def _fmt_usd(value: Optional[float]) -> str:
     if value >= 0.0001:
         return f"${value:.6f}".rstrip("0").rstrip(".")
     return f"${value:.2e}"
+
+
+def _fmt_trench_supply_pct(value: Optional[float]) -> str:
+    if value is None or value == 0:
+        return "0%"
+    return _fmt_pct(value)
 
 
 def _fmt_pct(value: Optional[float]) -> str:

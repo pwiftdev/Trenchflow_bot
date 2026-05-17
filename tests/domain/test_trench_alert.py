@@ -89,8 +89,8 @@ def test_format_scan_card_includes_trench_alert() -> None:
 
     assert "⚠️" in text
     trench = text.split("⚠️ Trench", 1)[1].split("\n\n", 1)[0]
-    assert "Bundlers +20% supply" in trench
-    assert "Snipers +5% supply" in trench
+    assert "Bundlers +20% supply · 5 wallets" in trench
+    assert "Snipers +5% supply · 2 wallets" in trench
     assert "Insiders 0% supply" in trench
     assert "Dev" not in trench
     assert "Labeled:" not in text
