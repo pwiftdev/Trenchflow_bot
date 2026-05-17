@@ -9,6 +9,14 @@ from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
 from domain.trench_alert import TrenchAlert
 
+_TRENCH_ABBR = {
+    "bundler": "Bun",
+    "sniper": "Sn",
+    "insider": "In",
+    "dev": "Dv",
+    "smart_trader": "Sm",
+}
+
 
 @dataclass(frozen=True)
 class ScanMeta:
@@ -16,13 +24,6 @@ class ScanMeta:
     scanned_at: datetime
     chat_title: Optional[str]
     first_call_line: Optional[str] = None
-
-
-def photo_header_caption(snapshot: TokenSnapshot) -> str:
-    """Short caption for the image when the full card is sent as a separate text message."""
-    name = escape(snapshot.name or "Unknown")
-    symbol = escape(snapshot.symbol or "?")
-    return f"<b>{name} (${symbol})</b>"
 
 
 def format_scan_card(
@@ -38,25 +39,10 @@ def format_scan_card(
     lines = [
         f"<b>{name} (${symbol})</b>",
         f"<code>{mint}</code>",
-        "",
         _format_subline(snapshot, security),
         "",
-        "📊 <b>Stats</b>",
-        f"├ USD: <b>{_fmt_price(snapshot.price_usd)}</b> ({_fmt_pct(snapshot.price_change_h24)})",
-        f"├ MC:  <b>{_fmt_usd(snapshot.market_cap)}</b>",
-        f"├ Vol: {_fmt_usd(snapshot.volume_h24)}",
-        f"├ LP:  {_fmt_usd(snapshot.liquidity_usd)}",
+        _format_stats(snapshot, security),
     ]
-
-    supply_line = _format_supply(snapshot, security)
-    if supply_line:
-        lines.append(f"├ Sup: {supply_line}")
-
-    lines.append(
-        f"├ 1H:  {_fmt_pct(snapshot.price_change_h1)} "
-        f"🟢{_fmt_count(snapshot.txns_h1_buys)} 🔴{_fmt_count(snapshot.txns_h1_sells)}"
-    )
-    lines.append(f"└ ATH: {_format_ath(snapshot)}")
 
     social_block = _format_socials(snapshot)
     if social_block:
@@ -73,12 +59,9 @@ def format_scan_card(
     if meta.first_call_line:
         lines.extend(["", escape(meta.first_call_line)])
 
-    lines.extend(
-        [
-            "",
-            f"👤 {_escape_limited(meta.scanner_display, 64)} · "
-            f"🕐 {meta.scanned_at.astimezone(timezone.utc).strftime('%H:%M UTC')}",
-        ]
+    lines.append(
+        f"\n{_compact_scanner(meta.scanner_display)} · "
+        f"{meta.scanned_at.astimezone(timezone.utc).strftime('%H:%M')}"
     )
 
     return "\n".join(lines)
@@ -88,7 +71,7 @@ def _format_subline(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot
     launch = _format_launchpad(snapshot.dex_id, snapshot.labels)
     age = _format_age(snapshot.pair_created_at_ms)
     holders = _fmt_count(security.holder_count if security else None)
-    return f"🌱 {launch} · #SOL · {age} · 👥{holders}"
+    return f"🌱 {launch} · {age} · 👥{holders}"
 
 
 def _format_launchpad(dex_id: Optional[str], labels: list[str]) -> str:
@@ -97,6 +80,28 @@ def _format_launchpad(dex_id: Optional[str], labels: list[str]) -> str:
     if labels:
         return escape(labels[0])
     return "—"
+
+
+def _format_stats(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot]) -> str:
+    rows = [
+        f"📊 <b>{_fmt_price(snapshot.price_usd)}</b> {_fmt_pct(snapshot.price_change_h24)}",
+        (
+            f"M {_fmt_usd(snapshot.market_cap)} · "
+            f"V {_fmt_usd(snapshot.volume_h24)} · "
+            f"L {_fmt_usd(snapshot.liquidity_usd)}"
+        ),
+    ]
+
+    supply_line = _format_supply(snapshot, security)
+    if supply_line:
+        rows.append(f"Sup {supply_line}")
+
+    rows.append(
+        f"1H {_fmt_pct(snapshot.price_change_h1)} "
+        f"🟢{_fmt_count(snapshot.txns_h1_buys)} 🔴{_fmt_count(snapshot.txns_h1_sells)}"
+    )
+    rows.append(f"ATH {_format_ath(snapshot)}")
+    return "\n".join(rows)
 
 
 def _format_socials(snapshot: TokenSnapshot) -> Optional[str]:
@@ -122,83 +127,66 @@ def _format_socials(snapshot: TokenSnapshot) -> Optional[str]:
             continue
         short = label.lower()
         if "twitter" in short or short == "x":
-            parts.append(f'<a href="{href_attr(url)}">Twitter</a>')
+            parts.append(f'<a href="{href_attr(url)}">TW</a>')
         else:
-            parts.append(f'<a href="{href_attr(url)}">{escape(label)}</a>')
+            parts.append(f'<a href="{href_attr(url)}">{escape(label[:8])}</a>')
         seen_urls.add(url)
 
     for label, url in snapshot.websites[:2]:
         if url in seen_urls:
             continue
-        parts.append(f'<a href="{href_attr(url)}">{escape(label)}</a>')
+        parts.append(f'<a href="{href_attr(url)}">{escape(label[:8])}</a>')
         seen_urls.add(url)
 
-    return "🔗 <b>Socials</b>\n└ " + " · ".join(parts)
+    return "🔗 " + " · ".join(parts)
 
 
 def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
-    if alert is None:
+    if alert is None or not alert.tags:
         return None
 
-    rows: list[str] = []
+    parts: list[str] = []
     for row in alert.tags:
+        abbr = _TRENCH_ABBR.get(row.tag, row.label[:2])
         pct = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "—"
-        rows.append(f"{escape(row.label)}: {_fmt_count(row.holder_count)} · {pct}")
+        parts.append(f"{abbr} {_fmt_count(row.holder_count)} {pct}")
 
-    if not rows:
-        return "⚠️ <b>Trench Alert</b>"
-
-    lines = ["⚠️ <b>Trench Alert</b>"]
-    for index, content in enumerate(rows):
-        branch = "└" if index == len(rows) - 1 else "├"
-        lines.append(f"{branch} {content}")
-
-    return "\n".join(lines)
+    return "⚠️ " + " · ".join(parts)
 
 
 def _format_security(
     snapshot: TokenSnapshot,
     security: Optional[SecuritySnapshot],
 ) -> str:
-    lines = ["🔒 <b>Security</b>"]
-
     if security is None:
-        lines.append("├ Top 10: —")
-        lines.append("├ Mint: —")
-        lines.append("├ Freeze: —")
-    else:
-        if security.fresh_1d_pct is not None or security.fresh_7d_pct is not None:
-            f1 = _fmt_pct(security.fresh_1d_pct) if security.fresh_1d_pct is not None else "—"
-            f7 = _fmt_pct(security.fresh_7d_pct) if security.fresh_7d_pct is not None else "—"
-            lines.append(f"├ Fresh: {f1} 1D | {f7} 7D")
+        return "🔒 — · DEX " + _format_dex_paid(snapshot)
 
-        top10 = _fmt_pct(security.top10_holder_pct) if security.top10_holder_pct is not None else "—"
-        holders = _fmt_count(security.holder_count)
-        lines.append(f"├ Top 10: {top10} | {holders} total")
+    rows = ["🔒"]
+    if security.fresh_1d_pct is not None or security.fresh_7d_pct is not None:
+        f1 = _fmt_pct(security.fresh_1d_pct) if security.fresh_1d_pct is not None else "—"
+        f7 = _fmt_pct(security.fresh_7d_pct) if security.fresh_7d_pct is not None else "—"
+        rows.append(f"Fresh {f1}/{f7}")
 
-        lines.append(f"├ Mint: {_authority_label(security.mint_renounced, good_when_true=True)}")
-        lines.append(f"├ Freeze: {_authority_label(security.freeze_renounced, good_when_true=True)}")
+    top10 = _fmt_pct(security.top10_holder_pct) if security.top10_holder_pct is not None else "—"
+    holders = _fmt_count(security.holder_count)
+    rows.append(f"T10 {top10} · {holders}")
 
-        dev = security.dev_sold_label or "— <i>(soon)</i>"
-        lines.append(f"├ Dev: {escape(dev)}")
+    mint_flag = _authority_emoji(security.mint_renounced)
+    freeze_flag = _authority_emoji(security.freeze_renounced)
+    dev = security.dev_sold_label or "—"
+    rows.append(f"{mint_flag} {freeze_flag} · Dv {dev} · DEX {_format_dex_paid(snapshot)}")
 
-    lines.append(f"└ DEX Paid: {_format_dex_paid(snapshot)}")
-
-    return "\n".join(lines)
+    return "\n".join(rows)
 
 
 def _format_dex_paid(snapshot: TokenSnapshot) -> str:
-    if snapshot.dex_profile_paid:
-        return "🟢 Paid"
-    return "🔴"
+    return "🟢" if snapshot.dex_profile_paid else "🔴"
 
 
-def _authority_label(renounced: Optional[bool], *, good_when_true: bool) -> str:
+def _authority_emoji(renounced: Optional[bool]) -> str:
     if renounced is None:
         return "—"
-    if renounced:
-        return "🟢 renounced" if good_when_true else "🔴 renounced"
-    return "🔴 active"
+    return "🟢" if renounced else "🔴"
 
 
 def _format_supply(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot]) -> Optional[str]:
@@ -214,8 +202,17 @@ def _format_ath(snapshot: TokenSnapshot) -> str:
     ath = _fmt_price(snapshot.ath_price_usd)
     if snapshot.price_usd and snapshot.ath_price_usd > 0:
         drawdown = ((snapshot.price_usd / snapshot.ath_price_usd) - 1) * 100
-        return f"{ath} ({_fmt_pct(drawdown)} from ATH)"
+        return f"{ath} ({_fmt_pct(drawdown)})"
     return ath
+
+
+def _compact_scanner(display: str) -> str:
+    if "(@" in display:
+        start = display.index("(@")
+        return escape(display[start + 1 :].rstrip(")"))
+    if display.startswith("@"):
+        return escape(display)
+    return _escape_limited(display, 24)
 
 
 def _format_age(pair_created_at_ms: Optional[int]) -> str:
@@ -245,13 +242,13 @@ def _fmt_usd(value: Optional[float]) -> str:
     if value is None:
         return "—"
     if value >= 1_000_000_000:
-        return f"${value / 1_000_000_000:.2f}B"
+        return f"${value / 1_000_000_000:.1f}B"
     if value >= 1_000_000:
-        return f"${value / 1_000_000:.2f}M"
+        return f"${value / 1_000_000:.1f}M"
     if value >= 1_000:
-        return f"${value / 1_000:.2f}K"
+        return f"${value / 1_000:.1f}K"
     if value >= 1:
-        return f"${value:.2f}"
+        return f"${value:.1f}"
     if value >= 0.0001:
         return f"${value:.6f}".rstrip("0").rstrip(".")
     return f"${value:.2e}"
@@ -261,7 +258,9 @@ def _fmt_pct(value: Optional[float]) -> str:
     if value is None:
         return "—"
     sign = "+" if value > 0 else ""
-    return f"{sign}{value:.0f}%" if abs(value) >= 10 else f"{sign}{value:.1f}%"
+    if abs(value) >= 10:
+        return f"{sign}{value:.0f}%"
+    return f"{sign}{value:.1f}%"
 
 
 def _fmt_count(value: Optional[int]) -> str:

@@ -2,7 +2,6 @@ import structlog
 from telegram import InlineKeyboardMarkup, Message
 from telegram.error import BadRequest, TelegramError
 
-from domain.scan_card import photo_header_caption
 from domain.scan_media import photo_url_candidates
 from domain.telegram_caption import (
     TELEGRAM_CAPTION_LIMIT,
@@ -15,23 +14,19 @@ from domain.token_snapshot import TokenSnapshot
 log = structlog.get_logger()
 
 
-def _fits_photo_caption(caption: str) -> bool:
-    return len(caption) <= TELEGRAM_CAPTION_LIMIT
-
-
 async def _try_reply_photo(
     message: Message,
     snapshot: TokenSnapshot,
     *,
-    caption: str | None,
-    keyboard: InlineKeyboardMarkup | None,
+    caption: str,
+    keyboard: InlineKeyboardMarkup,
 ) -> bool:
     for url in photo_url_candidates(snapshot):
         try:
             await message.reply_photo(
                 photo=url,
                 caption=caption,
-                parse_mode="HTML" if caption else None,
+                parse_mode="HTML",
                 reply_markup=keyboard,
             )
             return True
@@ -59,21 +54,14 @@ async def reply_scan_card(
     keyboard: InlineKeyboardMarkup,
     snapshot: TokenSnapshot,
 ) -> bool:
-    if _fits_photo_caption(caption):
-        if await _try_reply_photo(
-            message,
-            snapshot,
-            caption=caption,
-            keyboard=keyboard,
-        ):
-            return True
-    else:
-        await _try_reply_photo(
-            message,
-            snapshot,
-            caption=photo_header_caption(snapshot),
-            keyboard=None,
-        )
+    photo_caption = fit_telegram_caption(caption, limit=TELEGRAM_CAPTION_LIMIT)
+    if await _try_reply_photo(
+        message,
+        snapshot,
+        caption=photo_caption,
+        keyboard=keyboard,
+    ):
+        return True
 
     text_body = fit_telegram_caption(caption, limit=TELEGRAM_MESSAGE_LIMIT)
     if await _reply_text_html(
@@ -99,18 +87,12 @@ async def edit_scan_card(
     keyboard: InlineKeyboardMarkup,
     snapshot: TokenSnapshot,
 ) -> bool:
-    if message.photo and not _fits_photo_caption(caption):
-        return await _replace_with_text_message(
-            message,
-            caption=fit_telegram_caption(caption, limit=TELEGRAM_MESSAGE_LIMIT),
-            keyboard=keyboard,
-            snapshot=snapshot,
-        )
+    photo_caption = fit_telegram_caption(caption, limit=TELEGRAM_CAPTION_LIMIT)
 
     if message.photo:
         try:
             await message.edit_caption(
-                caption=fit_telegram_caption(caption, limit=TELEGRAM_CAPTION_LIMIT),
+                caption=photo_caption,
                 parse_mode="HTML",
                 reply_markup=keyboard,
             )
@@ -133,53 +115,6 @@ async def edit_scan_card(
         keyboard=keyboard,
         snapshot=snapshot,
     )
-
-
-async def _replace_with_text_message(
-    message: Message,
-    *,
-    caption: str,
-    keyboard: InlineKeyboardMarkup,
-    snapshot: TokenSnapshot,
-) -> bool:
-    """Photo messages cannot hold >1024 char captions — replace with a text message."""
-    bot = message.get_bot()
-    chat_id = message.chat_id
-    thread_id = message.message_thread_id
-
-    try:
-        await message.delete()
-    except TelegramError as exc:
-        log.warning("scan_delete_for_text_replace_failed", ca=snapshot.mint, error=str(exc))
-
-    await _try_reply_photo(
-        message,
-        snapshot,
-        caption=photo_header_caption(snapshot),
-        keyboard=None,
-    )
-
-    try:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=caption,
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-            reply_markup=keyboard,
-            message_thread_id=thread_id,
-        )
-        return True
-    except BadRequest as exc:
-        log.warning("scan_text_replace_rejected", ca=snapshot.mint, error=str(exc))
-        return await _reply_plain_fallback(
-            message,
-            caption=caption,
-            keyboard=keyboard,
-            snapshot=snapshot,
-        )
-    except TelegramError as exc:
-        log.warning("scan_text_replace_failed", ca=snapshot.mint, error=str(exc))
-        return False
 
 
 async def _reply_text_html(

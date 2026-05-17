@@ -12,7 +12,7 @@ def test_first_scan_line() -> None:
         is_first_scan=True,
         current_caller_label="Alice",
     )
-    assert "First call" in line
+    assert line.startswith("🔥")
     assert "$147.40K" in line
 
 
@@ -35,6 +35,6 @@ def test_repeat_scan_shows_pnl_since_call() -> None:
         is_first_scan=False,
         current_caller_label="Bob",
     )
-    assert "Since call" in line
-    assert "+30.0%" in line
+    assert "→" in line
+    assert "+30%" in line
     assert "12m ago" in line

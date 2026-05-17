@@ -3,9 +3,11 @@ from datetime import datetime, timezone
 from domain.scan_card import ScanMeta, format_scan_card
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
+from domain.telegram_caption import TELEGRAM_CAPTION_LIMIT
+from domain.trench_alert import HolderTagRow, TrenchAlert
 
 
-def test_format_scan_card_phanes_style_sections() -> None:
+def test_format_scan_card_compact_sections() -> None:
     snapshot = TokenSnapshot(
         mint="MintAddress1111111111111111111111111111111111",
         symbol="UNG",
@@ -28,6 +30,7 @@ def test_format_scan_card_phanes_style_sections() -> None:
         websites=[("Website", "https://example.com")],
         socials=[("twitter", "https://x.com/test")],
         boosts_active=1,
+        dex_profile_paid=True,
     )
     security = SecuritySnapshot(
         mint_renounced=True,
@@ -40,21 +43,88 @@ def test_format_scan_card_phanes_style_sections() -> None:
         scanner_display="Alice (@alice)",
         scanned_at=datetime(2026, 5, 16, 13, 18, tzinfo=timezone.utc),
         chat_title="Alpha Group",
-        first_call_line="🔥 First call Alice @ $147.4K",
+        first_call_line="🔥 @alice @ $147.4K",
+    )
+    alert = TrenchAlert(
+        total_holders=None,
+        labeled_supply_pct=None,
+        tags=(
+            HolderTagRow("bundler", "Bundlers", 5, 20.0),
+            HolderTagRow("sniper", "Snipers", 2, 5.0),
+            HolderTagRow("insider", "Insiders", 0, 0.0),
+            HolderTagRow("dev", "Dev", 1, 0.0),
+            HolderTagRow("smart_trader", "Smart", 82, 2.0),
+        ),
     )
 
-    text = format_scan_card(snapshot, meta, security)
+    text = format_scan_card(snapshot, meta, security, trench_alert=alert)
 
     assert "📊" in text
-    assert "├ USD:" in text
-    assert "├ 1H:" in text
-    assert "🔒" in text
-    assert "Top 10:" in text
-    assert "🔥 First call" in text
-    assert "DEX Paid:" in text
+    assert "renounced" not in text.lower()
+    assert "Paid" not in text
     assert "🔗" in text
     assert ">DEF</a>" in text
-    assert ">DS</a>" in text
+    assert "⚠️ Bun" in text
+    assert "T10" in text
+    assert "🟢 🟢" in text
+    assert "@alice" in text
+
+
+def test_format_scan_card_fits_telegram_photo_caption() -> None:
+    """Realistic full card (long mint + trench + call line) must fit photo caption limit."""
+    mint = "C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWwkXpump"
+    snapshot = TokenSnapshot(
+        mint=mint,
+        symbol="BULLISH",
+        name="Bullish Degen",
+        price_usd=0.001487,
+        market_cap=1_490_000,
+        fdv=None,
+        liquidity_usd=145_190,
+        volume_h24=226_280,
+        price_change_h1=-0.9,
+        price_change_h24=3.3,
+        txns_h1_buys=1100,
+        txns_h1_sells=397,
+        pair_created_at_ms=1_700_000_000_000,
+        dex_id=None,
+        labels=[],
+        websites=[("Website", "https://bullish.example")],
+        socials=[("twitter", "https://x.com/bullish")],
+        dex_profile_paid=True,
+        ath_price_usd=0.054434,
+    )
+    security = SecuritySnapshot(
+        mint_renounced=True,
+        freeze_renounced=True,
+        top10_holder_pct=23.0,
+        holder_count=31_600,
+        supply_ui="1000M",
+        dev_sold_label="🔴2.9%",
+    )
+    meta = ScanMeta(
+        scanner_display="Bakardi (@bakardisol)",
+        scanned_at=datetime(2026, 5, 17, 9, 51, tzinfo=timezone.utc),
+        chat_title="Test",
+        first_call_line=(
+            "📈 $1.47M→$1.49M +1% · @bakardisol · 26m"
+        ),
+    )
+    alert = TrenchAlert(
+        total_holders=None,
+        labeled_supply_pct=None,
+        tags=(
+            HolderTagRow("bundler", "Bundlers", 444, 1.1),
+            HolderTagRow("sniper", "Snipers", 3, 2.9),
+            HolderTagRow("insider", "Insiders", 0, 0.0),
+            HolderTagRow("dev", "Dev", 1, 2.9),
+            HolderTagRow("smart_trader", "Smart", 82, 2.0),
+        ),
+    )
+
+    text = format_scan_card(snapshot, meta, security, trench_alert=alert)
+
+    assert len(text) <= TELEGRAM_CAPTION_LIMIT, f"caption length {len(text)} > {TELEGRAM_CAPTION_LIMIT}"
 
 
 def test_format_ath_shows_price_and_drawdown() -> None:
@@ -81,11 +151,11 @@ def test_format_ath_shows_price_and_drawdown() -> None:
         chat_title=None,
     )
     text = format_scan_card(snapshot, meta, None)
-    assert "ATH:" in text
-    assert "from ATH" in text
+    assert "ATH" in text
+    assert "from ATH" not in text
 
 
-def test_format_dex_paid_green_when_paid_red_when_not() -> None:
+def test_format_dex_paid_emoji_only() -> None:
     meta = ScanMeta(
         scanner_display="x",
         scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
@@ -117,5 +187,5 @@ def test_format_dex_paid_green_when_paid_red_when_not() -> None:
         meta,
         None,
     )
-    assert "└ DEX Paid: 🟢 Paid" in paid
-    assert "└ DEX Paid: 🔴" in unpaid
+    assert "DEX 🟢" in paid
+    assert "DEX 🔴" in unpaid

@@ -18,7 +18,7 @@ from domain.birdeye_parse import (
     security_from_birdeye,
 )
 from domain.scan_card import ScanMeta, format_scan_card
-from domain.telegram_caption import TELEGRAM_MESSAGE_LIMIT, fit_telegram_caption
+from domain.telegram_caption import TELEGRAM_CAPTION_LIMIT, fit_telegram_caption
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
 from domain.trench_alert import TrenchAlert, holder_profile_from_birdeye
@@ -177,7 +177,7 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
     )
     caption = fit_telegram_caption(
         format_scan_card(snapshot, meta, security, trench_alert=trench_alert),
-        limit=TELEGRAM_MESSAGE_LIMIT,
+        limit=TELEGRAM_CAPTION_LIMIT,
     )
 
     return ScanResult(

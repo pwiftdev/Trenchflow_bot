@@ -62,7 +62,7 @@ def test_security_from_birdeye_scales_top10_and_dev_sold() -> None:
     assert security.top10_holder_pct == 30.4
     assert security.holder_count == 3_400
     assert security.freeze_renounced is True
-    assert security.dev_sold_label == "🟢 sold"
+    assert security.dev_sold_label == "🟢"
     assert security.supply_ui == "1B"
 
 

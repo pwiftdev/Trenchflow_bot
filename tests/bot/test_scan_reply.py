@@ -35,11 +35,12 @@ async def test_reply_scan_card_falls_back_after_bad_header() -> None:
         side_effect=[BadRequest("failed to get HTTP URL content"), None]
     )
     message.reply_text = AsyncMock()
+    keyboard = MagicMock()
 
     await reply_scan_card(
         message,
         caption="cap",
-        keyboard=MagicMock(),
+        keyboard=keyboard,
         snapshot=_snapshot(),
     )
 
@@ -47,31 +48,23 @@ async def test_reply_scan_card_falls_back_after_bad_header() -> None:
     assert message.reply_photo.await_args_list[1].kwargs["photo"] == (
         "https://cdn.example.com/good-icon.png"
     )
+    assert message.reply_photo.await_args_list[1].kwargs["reply_markup"] is keyboard
     message.reply_text.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_reply_scan_card_long_caption_sends_photo_then_text() -> None:
+async def test_reply_scan_card_text_only_when_all_photos_fail() -> None:
     message = MagicMock()
-    message.reply_photo = AsyncMock()
+    message.reply_photo = AsyncMock(side_effect=BadRequest("bad"))
     message.reply_text = AsyncMock()
-    long_caption = "x" * 1100
     keyboard = MagicMock()
 
     await reply_scan_card(
         message,
-        caption=long_caption,
+        caption="cap",
         keyboard=keyboard,
         snapshot=_snapshot(),
     )
 
-    message.reply_photo.assert_awaited_once()
-    photo_kwargs = message.reply_photo.await_args.kwargs
-    assert photo_kwargs["photo"] == "https://cdn.example.com/bad-banner.png"
-    assert photo_kwargs["reply_markup"] is None
-    assert "Test" in photo_kwargs["caption"]
-
     message.reply_text.assert_awaited_once()
-    text_kwargs = message.reply_text.await_args.kwargs
-    assert text_kwargs["reply_markup"] is keyboard
-    assert len(text_kwargs["text"]) <= 4096
+    assert message.reply_text.await_args.kwargs["reply_markup"] is keyboard

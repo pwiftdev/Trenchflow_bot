@@ -11,21 +11,30 @@ def format_since_call_line(
     is_first_scan: bool,
     current_caller_label: str,
 ) -> str:
+    caller = _compact_caller(first_caller_label if not is_first_scan else current_caller_label)
+
     if is_first_scan:
         mcap = _fmt_usd(current_market_cap_usd)
-        return f"🔥 First call {current_caller_label} @ {mcap}"
+        return f"🔥 {caller} @ {mcap}"
 
     if first_market_cap_usd is None or current_market_cap_usd is None:
-        ago = _format_ago(first_scanned_at)
-        return f"🔥 First call {first_caller_label} · {ago}"
+        return f"🔥 {caller} · {_format_ago(first_scanned_at)}"
 
     pct = ((current_market_cap_usd - first_market_cap_usd) / first_market_cap_usd) * 100
     sign = "+" if pct > 0 else ""
-    ago = _format_ago(first_scanned_at)
     return (
-        f"📈 Since call @ {_fmt_usd(first_market_cap_usd)} → {_fmt_usd(current_market_cap_usd)} "
-        f"({sign}{pct:.1f}%) · {first_caller_label} · {ago}"
+        f"📈 {_fmt_usd(first_market_cap_usd)}→{_fmt_usd(current_market_cap_usd)} "
+        f"{sign}{pct:.0f}% · {caller} · {_format_ago(first_scanned_at)}"
     )
+
+
+def _compact_caller(label: str) -> str:
+    if "(@" in label:
+        start = label.index("(@")
+        return label[start + 1 :].rstrip(")")
+    if label.startswith("@"):
+        return label
+    return label.split(" · ")[0].split()[0][:20]
 
 
 def caller_label(

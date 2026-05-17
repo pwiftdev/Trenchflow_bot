@@ -116,10 +116,9 @@ def _dev_holder_label(creator_pct: Optional[float]) -> Optional[str]:
     if creator_pct is None:
         return None
     if creator_pct < 0.01:
-        return "🟢 sold"
-    if creator_pct >= 1:
-        return f"🔴 {creator_pct:.1f}%"
-    return f"🔴 {creator_pct * 100:.2f}%"
+        return "🟢"
+    pct = creator_pct if creator_pct >= 1 else creator_pct * 100
+    return f"🔴{pct:.1f}%"
 
 
 def _holder_percent_display(value: float) -> float:
