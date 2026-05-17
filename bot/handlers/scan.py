@@ -16,17 +16,8 @@ from config.settings import get_settings
 from domain.ca import is_valid_solana_address
 
 
-async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def run_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, mint: str) -> None:
     if update.message is None:
-        return
-
-    if not context.args:
-        await update.message.reply_text("Usage: /scan <contract address>")
-        return
-
-    mint = context.args[0].strip()
-    if not is_valid_solana_address(mint):
-        await update.message.reply_text("That doesn't look like a valid Solana contract address.")
         return
 
     settings = get_settings()
@@ -72,3 +63,19 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text(
             "Scan data loaded but the card could not be posted. Check bot permissions or try again.",
         )
+
+
+async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None:
+        return
+
+    if not context.args:
+        await update.message.reply_text("Usage: /scan <contract address>")
+        return
+
+    mint = context.args[0].strip()
+    if not is_valid_solana_address(mint):
+        await update.message.reply_text("That doesn't look like a valid Solana contract address.")
+        return
+
+    await run_scan(update, context, mint)

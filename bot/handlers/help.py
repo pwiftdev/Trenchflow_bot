@@ -5,10 +5,9 @@ HELP_TEXT = """<b>Trenchflow</b> — Solana scan bot for trading groups
 
 <b>Scanning</b>
 /scan &lt;contract&gt; — Full token card (price, MC, LP, volume, security)
+  · Or paste a contract address — no command needed
   · First scan in a group: <b>First call</b> with MC at scan
   · Repeat scan: <b>Since call</b> PnL vs first call in that group
-
-You can also paste a Solana contract address (auto-detect coming soon).
 
 <b>Other</b>
 /help — This message

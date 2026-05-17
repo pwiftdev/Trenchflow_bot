@@ -1,6 +1,7 @@
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
 from bot.commands import register_bot_commands
+from bot.handlers.ca_detect import ca_detect_message
 from bot.handlers.dbtest import dbtest_command
 from bot.handlers.founderstest import founderstest_command
 from bot.handlers.help import help_command
@@ -24,6 +25,9 @@ def build_application(settings: Settings) -> Application:
     )
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("scan", scan_command))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, ca_detect_message),
+    )
     application.add_handler(
         CallbackQueryHandler(scan_callback, pattern=f"^({DELETE_CALLBACK}|{REFRESH_PREFIX})")
     )
