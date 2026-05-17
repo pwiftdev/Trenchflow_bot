@@ -41,10 +41,13 @@ def security_from_birdeye(
     data: dict[str, Any],
     *,
     holder_count: Optional[int] = None,
+    top10_holder_pct: Optional[float] = None,
 ) -> SecuritySnapshot:
-    top10 = _to_float(data.get("top10HolderPercent"))
-    if top10 is not None:
-        top10 = _holder_percent_display(top10)
+    top10 = top10_holder_pct
+    if top10 is None:
+        top10 = _to_float(data.get("top10HolderPercent"))
+        if top10 is not None:
+            top10 = _holder_percent_display(top10)
 
     supply = _to_float(data.get("totalSupply"))
     supply_ui = _format_supply_ui(supply) if supply is not None else None
@@ -91,6 +94,17 @@ def merge_security(
 
 def holder_count_from_overview(data: dict[str, Any]) -> Optional[int]:
     return _to_int(data.get("holder"))
+
+
+def total_supply_from_overview(data: dict[str, Any]) -> Optional[float]:
+    supply = _to_float(data.get("circulatingSupply"))
+    if supply is None:
+        supply = _to_float(data.get("totalSupply"))
+    return supply
+
+
+def total_supply_from_security(data: dict[str, Any]) -> Optional[float]:
+    return _to_float(data.get("totalSupply"))
 
 
 def creation_time_ms_from_security(data: dict[str, Any]) -> Optional[int]:

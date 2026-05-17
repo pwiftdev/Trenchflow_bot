@@ -39,6 +39,15 @@ class DexScreenerClient:
 
         return _pair_to_snapshot(pair, mint)
 
+    async def fetch_lp_owner_addresses(self, chain_id: str, mint: str) -> frozenset[str]:
+        from domain.lp_holders import lp_owner_addresses_from_pairs
+
+        try:
+            pairs = await self._fetch_pairs(chain_id, mint)
+        except DexScreenerError:
+            return frozenset()
+        return lp_owner_addresses_from_pairs(pairs)
+
     async def fetch_token_orders(self, chain_id: str, mint: str) -> DexOrdersInfo:
         url = f"{self._base_url}/orders/v1/{chain_id}/{mint}"
         try:

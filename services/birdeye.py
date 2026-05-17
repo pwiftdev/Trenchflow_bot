@@ -41,6 +41,28 @@ class BirdeyeClient:
     async def fetch_token_security(self, mint: str) -> dict[str, Any]:
         return await self._fetch_data("/defi/token_security", mint)
 
+    async def fetch_token_holders(
+        self,
+        mint: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        ui_amount_mode: str = "raw",
+    ) -> list[dict[str, Any]]:
+        data = await self._fetch_data(
+            "/defi/v3/token/holder",
+            mint,
+            extra_params={
+                "limit": limit,
+                "offset": offset,
+                "ui_amount_mode": ui_amount_mode,
+            },
+        )
+        items = data.get("items")
+        if not isinstance(items, list):
+            return []
+        return [item for item in items if isinstance(item, dict)]
+
     async def fetch_holder_profile(
         self,
         mint: str,

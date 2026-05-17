@@ -16,7 +16,10 @@ from domain.birdeye_parse import (
     merge_security,
     overview_to_snapshot,
     security_from_birdeye,
+    total_supply_from_overview,
+    total_supply_from_security,
 )
+from domain.lp_holders import top10_supply_percent_excluding_lp
 from domain.scan_card import ScanMeta, format_scan_card
 from domain.telegram_caption import TELEGRAM_CAPTION_LIMIT, fit_telegram_caption
 from domain.security_snapshot import SecuritySnapshot
@@ -124,6 +127,8 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
         helius_security,
         metadata_image,
         dex_orders,
+        lp_owners,
+        holder_items,
     ) = await asyncio.gather(
         birdeye.fetch_token_overview(mint),
         birdeye.fetch_token_security(mint),
@@ -134,6 +139,8 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
         _fetch_helius_security(mint),
         _fetch_metadata_image(mint),
         dex_client.fetch_token_orders(settings.solana_chain_id, mint),
+        dex_client.fetch_lp_owner_addresses(settings.solana_chain_id, mint),
+        birdeye.fetch_token_holders(mint, limit=100),
     )
 
     snapshot = overview_to_snapshot(overview_data, mint)
@@ -152,9 +159,22 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
         lookback_seconds=settings.birdeye_ath_lookback_days * 86400,
     )
 
+    total_supply = total_supply_from_security(security_data)
+    if total_supply is None:
+        total_supply = total_supply_from_overview(overview_data)
+
+    top10_ex_lp: Optional[float] = None
+    if total_supply is not None and holder_items:
+        top10_ex_lp = top10_supply_percent_excluding_lp(
+            holder_items,
+            total_supply=total_supply,
+            lp_owners=lp_owners,
+        )
+
     birdeye_security = security_from_birdeye(
         security_data,
         holder_count=holder_count_from_overview(overview_data),
+        top10_holder_pct=top10_ex_lp,
     )
     security = merge_security(birdeye_security, helius_security)
     trench_alert = holder_profile_from_birdeye(holder_profile_data)
