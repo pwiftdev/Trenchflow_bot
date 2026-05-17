@@ -4,6 +4,7 @@ from typing import Optional
 import structlog
 from telegram import Bot
 from telegram import Update
+from telegram.error import ChatMigrated
 
 from bot.scan_keyboard import build_scan_keyboard
 from config.settings import Settings, get_settings
@@ -77,18 +78,44 @@ async def notify_founders_scan(
     text = format_alpha_scan_alert(snapshot, ctx)
     keyboard = build_scan_keyboard(snapshot.mint)
 
+    founders_chat_id = settings.founders_chat_id
+    assert founders_chat_id is not None
+
     try:
         await bot.send_message(
-            chat_id=settings.founders_chat_id,
+            chat_id=founders_chat_id,
             text=text,
             parse_mode="HTML",
             disable_web_page_preview=True,
             reply_markup=keyboard,
         )
+    except ChatMigrated as exc:
+        log.warning(
+            "founders_chat_migrated",
+            old_chat_id=founders_chat_id,
+            new_chat_id=exc.migrate_to_chat_id,
+            hint="Update FOUNDERS_CHAT_ID in .env",
+        )
+        try:
+            await bot.send_message(
+                chat_id=exc.migrate_to_chat_id,
+                text=text,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+                reply_markup=keyboard,
+            )
+        except Exception as retry_exc:
+            log.warning(
+                "alpha_feed_send_failed",
+                founders_chat_id=exc.migrate_to_chat_id,
+                ca=snapshot.mint,
+                group_id=chat.id,
+                error=str(retry_exc),
+            )
     except Exception as exc:
         log.warning(
             "alpha_feed_send_failed",
-            founders_chat_id=settings.founders_chat_id,
+            founders_chat_id=founders_chat_id,
             ca=snapshot.mint,
             group_id=chat.id,
             error=str(exc),
