@@ -1,3 +1,5 @@
+from typing import Optional
+
 import structlog
 from telegram import InlineKeyboardMarkup, Message
 from telegram.error import BadRequest, TelegramError
@@ -12,6 +14,10 @@ from domain.telegram_caption import (
 from domain.token_snapshot import TokenSnapshot
 
 log = structlog.get_logger()
+
+
+def _is_message_not_modified(exc: BadRequest) -> bool:
+    return "message is not modified" in str(exc).lower()
 
 
 async def _try_reply_photo(
@@ -80,6 +86,49 @@ async def reply_scan_card(
     )
 
 
+async def _try_edit_photo_caption(
+    message: Message,
+    *,
+    caption: str,
+    keyboard: InlineKeyboardMarkup,
+    snapshot: TokenSnapshot,
+    parse_mode: Optional[str],
+) -> bool:
+    kwargs: dict = {"caption": caption, "reply_markup": keyboard}
+    if parse_mode is not None:
+        kwargs["parse_mode"] = parse_mode
+    try:
+        await message.edit_caption(**kwargs)
+        return True
+    except BadRequest as exc:
+        if _is_message_not_modified(exc):
+            return True
+        log.warning(
+            "scan_caption_edit_failed",
+            ca=snapshot.mint,
+            parse_mode=parse_mode,
+            error=str(exc),
+        )
+        return False
+
+
+async def _try_edit_plain_caption(
+    message: Message,
+    *,
+    caption: str,
+    keyboard: InlineKeyboardMarkup,
+    snapshot: TokenSnapshot,
+) -> bool:
+    plain = strip_html_tags(caption)[:TELEGRAM_CAPTION_LIMIT]
+    return await _try_edit_photo_caption(
+        message,
+        caption=plain,
+        keyboard=keyboard,
+        snapshot=snapshot,
+        parse_mode=None,
+    )
+
+
 async def edit_scan_card(
     message: Message,
     *,
@@ -87,18 +136,24 @@ async def edit_scan_card(
     keyboard: InlineKeyboardMarkup,
     snapshot: TokenSnapshot,
 ) -> bool:
+    """Update the existing scan message in place (never reply with a new card)."""
     photo_caption = fit_telegram_caption(caption, limit=TELEGRAM_CAPTION_LIMIT)
 
     if message.photo:
-        try:
-            await message.edit_caption(
-                caption=photo_caption,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
+        if await _try_edit_photo_caption(
+            message,
+            caption=photo_caption,
+            keyboard=keyboard,
+            snapshot=snapshot,
+            parse_mode="HTML",
+        ):
             return True
-        except BadRequest as exc:
-            log.warning("scan_caption_edit_failed", ca=snapshot.mint, error=str(exc))
+        return await _try_edit_plain_caption(
+            message,
+            caption=photo_caption,
+            keyboard=keyboard,
+            snapshot=snapshot,
+        )
 
     text_body = fit_telegram_caption(caption, limit=TELEGRAM_MESSAGE_LIMIT)
     if await _edit_text_html(
@@ -109,12 +164,22 @@ async def edit_scan_card(
     ):
         return True
 
-    return await _reply_plain_fallback(
-        message,
-        caption=text_body,
-        keyboard=keyboard,
-        snapshot=snapshot,
-    )
+    plain = strip_html_tags(text_body)[:TELEGRAM_MESSAGE_LIMIT]
+    try:
+        await message.edit_text(
+            plain,
+            disable_web_page_preview=True,
+            reply_markup=keyboard,
+        )
+        return True
+    except BadRequest as exc:
+        if _is_message_not_modified(exc):
+            return True
+        log.warning("scan_text_edit_failed", ca=snapshot.mint, error=str(exc))
+        return False
+    except TelegramError as exc:
+        log.warning("scan_text_edit_failed", ca=snapshot.mint, error=str(exc))
+        return False
 
 
 async def _reply_text_html(
@@ -156,6 +221,8 @@ async def _edit_text_html(
         )
         return True
     except BadRequest as exc:
+        if _is_message_not_modified(exc):
+            return True
         log.warning("scan_text_edit_failed", ca=snapshot.mint, error=str(exc))
         return False
     except TelegramError as exc:
