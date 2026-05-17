@@ -18,6 +18,13 @@ class ScanMeta:
     first_call_line: Optional[str] = None
 
 
+def photo_header_caption(snapshot: TokenSnapshot) -> str:
+    """Short caption for the image when the full card is sent as a separate text message."""
+    name = escape(snapshot.name or "Unknown")
+    symbol = escape(snapshot.symbol or "?")
+    return f"<b>{name} (${symbol})</b>"
+
+
 def format_scan_card(
     snapshot: TokenSnapshot,
     meta: ScanMeta,
