@@ -66,14 +66,15 @@ def test_format_scan_card_phanes_style_tree() -> None:
     assert "├ USD" in text
     assert "🟩" in text and "🟥" in text
     assert "🔒 Security" in text
-    assert "Top 10" in text
-    assert "Dev Sold" in text
-    assert "DEX Paid" in text
-    assert "🔗 Socials" in text
+    assert "T10" in text
+    assert "Dev " in text
+    assert "DEX " in text
+    assert "🔗" in text
     assert ">DEF</a>" in text
-    assert "⚠️ Trench" in text
     assert "Bundlers" in text
     assert "Insiders" not in text
+    trench = text.split("⚠️\n", 1)[1].split("\n\n", 1)[0]
+    assert "Dev 1" not in trench
 
 
 def test_format_scan_card_fits_telegram_photo_caption() -> None:
@@ -154,5 +155,5 @@ def test_format_dex_paid_emoji() -> None:
     )
     paid = format_scan_card(TokenSnapshot(**base, dex_profile_paid=True), meta, None)
     unpaid = format_scan_card(TokenSnapshot(**base, dex_profile_paid=False), meta, None)
-    assert "DEX Paid  🟢" in paid
-    assert "DEX Paid  🔴" in unpaid
+    assert "DEX 🟢" in paid
+    assert "DEX 🔴" in unpaid

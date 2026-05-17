@@ -11,6 +11,7 @@ from domain.trench_alert import TrenchAlert
 
 _BRANCH = " ├"
 _LAST = " └"
+_TRENCH_SKIP_TAGS = frozenset({"dev"})
 
 
 @dataclass(frozen=True)
@@ -70,30 +71,30 @@ def _header_emoji(snapshot: TokenSnapshot) -> str:
 def _format_subline(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot]) -> str:
     age = _format_age(snapshot.pair_created_at_ms)
     holders = _fmt_count(security.holder_count if security else None)
-    return f"{_LAST} #SOL | 🌱{age} | 👁️{holders}"
+    return f"{_LAST} #SOL|🌱{age}|👁️{holders}"
 
 
 def _format_stats(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot]) -> str:
     lines = [
         "📊 Stats",
         (
-            f"{_BRANCH} USD  <b>{_fmt_price(snapshot.price_usd)}</b> "
+            f"{_BRANCH} USD <b>{_fmt_price(snapshot.price_usd)}</b> "
             f"({_fmt_pct(snapshot.price_change_h24)})"
         ),
-        f"{_BRANCH} MC   {_fmt_usd(snapshot.market_cap)}",
-        f"{_BRANCH} Vol  {_fmt_usd(snapshot.volume_h24)}",
-        f"{_BRANCH} LP   {_fmt_usd(snapshot.liquidity_usd)}",
+        f"{_BRANCH} MC {_fmt_usd(snapshot.market_cap)}",
+        f"{_BRANCH} Vol {_fmt_usd(snapshot.volume_h24)}",
+        f"{_BRANCH} LP {_fmt_usd(snapshot.liquidity_usd)}",
     ]
 
     supply_line = _format_supply(snapshot, security)
     if supply_line:
-        lines.append(f"{_BRANCH} Sup  {supply_line}")
+        lines.append(f"{_BRANCH} Sup {supply_line}")
 
     lines.append(
-        f"{_BRANCH} 1H   {_fmt_pct(snapshot.price_change_h1)} "
+        f"{_BRANCH} 1H {_fmt_pct(snapshot.price_change_h1)} "
         f"🟩{_fmt_count(snapshot.txns_h1_buys)} 🟥{_fmt_count(snapshot.txns_h1_sells)}"
     )
-    lines.append(f"{_LAST} ATH  {_format_ath(snapshot)}")
+    lines.append(f"{_LAST} ATH {_format_ath(snapshot)}")
     return "\n".join(lines)
 
 
@@ -101,7 +102,7 @@ def _format_socials(snapshot: TokenSnapshot) -> Optional[str]:
     links = _token_social_links(snapshot)
     if not links:
         return None
-    return "🔗 Socials\n" + f"{_LAST} " + " • ".join(links)
+    return "🔗\n" + f"{_LAST} " + " · ".join(links)
 
 
 def _token_social_links(snapshot: TokenSnapshot) -> list[str]:
@@ -135,15 +136,17 @@ def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
 
     parts: list[str] = []
     for row in alert.tags:
+        if row.tag in _TRENCH_SKIP_TAGS:
+            continue
         if row.holder_count == 0 and (row.percent_of_supply or 0) == 0:
             continue
         pct = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "—"
-        parts.append(f"{escape(row.label)} {_fmt_count(row.holder_count)} ({pct})")
+        parts.append(f"{escape(row.label)} {_fmt_count(row.holder_count)} {pct}")
 
     if not parts:
         return None
 
-    return "⚠️ Trench\n" + f"{_LAST} " + " · ".join(parts)
+    return "⚠️\n" + f"{_LAST} " + " · ".join(parts)
 
 
 def _format_security(
@@ -153,32 +156,32 @@ def _format_security(
     lines = ["🔒 Security"]
 
     if security is None:
-        lines.append(f"{_BRANCH} Top 10  —")
-        lines.append(f"{_LAST} DEX Paid  {_format_dex_paid(snapshot)}")
+        lines.append(f"{_BRANCH} T10 —")
+        lines.append(f"{_LAST} DEX {_format_dex_paid(snapshot)}")
         return "\n".join(lines)
 
     if security.fresh_1d_pct is not None or security.fresh_7d_pct is not None:
         f1 = _fmt_pct(security.fresh_1d_pct) if security.fresh_1d_pct is not None else "—"
         f7 = _fmt_pct(security.fresh_7d_pct) if security.fresh_7d_pct is not None else "—"
-        lines.append(f"{_BRANCH} Fresh  {f1} 1D | {f7} 7D")
+        lines.append(f"{_BRANCH} Fresh {f1}/{f7}")
 
     top10 = _fmt_pct(security.top10_holder_pct) if security.top10_holder_pct is not None else "—"
     holders = _fmt_count(security.holder_count)
-    lines.append(f"{_BRANCH} Top 10  {top10} | {holders}")
+    lines.append(f"{_BRANCH} T10 {top10}|{holders}")
 
-    lines.append(f"{_BRANCH} Dev Sold  {_format_dev_sold(security)}")
-    lines.append(f"{_LAST} DEX Paid  {_format_dex_paid(snapshot)}")
+    lines.append(f"{_BRANCH} Dev {_format_dev_sold(security)}")
+    lines.append(f"{_LAST} DEX {_format_dex_paid(snapshot)}")
     return "\n".join(lines)
 
 
 def _format_dev_sold(security: SecuritySnapshot) -> str:
     label = security.dev_sold_label
     if label == "🟢":
-        return "🟢  🅳"
+        return "🟢🅳"
     if label and label.startswith("🔴"):
         pct = label[1:].strip()
-        return f"🔴 {pct}  🅳"
-    return "—  🅳"
+        return f"🔴{pct}🅳"
+    return "—🅳"
 
 
 def _format_dex_paid(snapshot: TokenSnapshot) -> str:
