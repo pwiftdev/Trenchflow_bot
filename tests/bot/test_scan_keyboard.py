@@ -33,7 +33,7 @@ def test_scan_keyboard_has_explorer_urls_and_actions() -> None:
 
     actions = keyboard.inline_keyboard[1]
     assert len(actions) == 2
-    assert actions[0].text == "REFRESH"
+    assert actions[0].text == "🔄"
     assert actions[0].callback_data == f"{REFRESH_PREFIX}{MINT}"
-    assert actions[1].text == "DELETE"
+    assert actions[1].text == "🗑️"
     assert actions[1].callback_data == DELETE_CALLBACK

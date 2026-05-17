@@ -19,8 +19,8 @@ def build_scan_keyboard(snapshot: TokenSnapshot) -> InlineKeyboardMarkup:
         InlineKeyboardButton("X", url=explorer_links.x_search_url(snapshot.symbol, mint)),
     ]
     action_row = [
-        InlineKeyboardButton("REFRESH", callback_data=f"{REFRESH_PREFIX}{mint}"),
-        InlineKeyboardButton("DELETE", callback_data=DELETE_CALLBACK),
+        InlineKeyboardButton("🔄", callback_data=f"{REFRESH_PREFIX}{mint}"),
+        InlineKeyboardButton("🗑️", callback_data=DELETE_CALLBACK),
     ]
 
     return InlineKeyboardMarkup([explorer_row, action_row])
