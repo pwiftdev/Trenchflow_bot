@@ -63,12 +63,13 @@ def test_format_scan_card_phanes_style_tree() -> None:
     assert " ├" in text
     assert " └" in text
     assert "📊 Stats" in text
-    assert "├ USD" in text
+    assert "USD" not in text.split("📊 Stats")[1].split("🔗")[0]
+    assert "├ MC" in text
     assert "🟩" in text and "🟥" in text
     assert "🔒 Security" in text
     assert "T10" in text
-    assert "Dev " in text
-    assert "DEX " in text
+    assert " DS " in text
+    assert " DP " in text
     assert "🔗" in text
     assert ">DEF</a>" in text
     assert "Bundlers" in text
@@ -155,5 +156,5 @@ def test_format_dex_paid_emoji() -> None:
     )
     paid = format_scan_card(TokenSnapshot(**base, dex_profile_paid=True), meta, None)
     unpaid = format_scan_card(TokenSnapshot(**base, dex_profile_paid=False), meta, None)
-    assert "DEX 🟢" in paid
-    assert "DEX 🔴" in unpaid
+    assert "DP 🟢" in paid
+    assert "DP 🔴" in unpaid

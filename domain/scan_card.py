@@ -77,10 +77,6 @@ def _format_subline(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot
 def _format_stats(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot]) -> str:
     lines = [
         "📊 Stats",
-        (
-            f"{_BRANCH} USD <b>{_fmt_price(snapshot.price_usd)}</b> "
-            f"({_fmt_pct(snapshot.price_change_h24)})"
-        ),
         f"{_BRANCH} MC {_fmt_usd(snapshot.market_cap)}",
         f"{_BRANCH} Vol {_fmt_usd(snapshot.volume_h24)}",
         f"{_BRANCH} LP {_fmt_usd(snapshot.liquidity_usd)}",
@@ -157,7 +153,7 @@ def _format_security(
 
     if security is None:
         lines.append(f"{_BRANCH} T10 —")
-        lines.append(f"{_LAST} DEX {_format_dex_paid(snapshot)}")
+        lines.append(f"{_LAST} DP {_format_dex_paid(snapshot)}")
         return "\n".join(lines)
 
     if security.fresh_1d_pct is not None or security.fresh_7d_pct is not None:
@@ -169,19 +165,18 @@ def _format_security(
     holders = _fmt_count(security.holder_count)
     lines.append(f"{_BRANCH} T10 {top10}|{holders}")
 
-    lines.append(f"{_BRANCH} Dev {_format_dev_sold(security)}")
-    lines.append(f"{_LAST} DEX {_format_dex_paid(snapshot)}")
+    lines.append(f"{_BRANCH} DS {_format_dev_sold(security)}")
+    lines.append(f"{_LAST} DP {_format_dex_paid(snapshot)}")
     return "\n".join(lines)
 
 
 def _format_dev_sold(security: SecuritySnapshot) -> str:
     label = security.dev_sold_label
     if label == "🟢":
-        return "🟢🅳"
+        return "🟢"
     if label and label.startswith("🔴"):
-        pct = label[1:].strip()
-        return f"🔴{pct}🅳"
-    return "—🅳"
+        return label
+    return "—"
 
 
 def _format_dex_paid(snapshot: TokenSnapshot) -> str:
