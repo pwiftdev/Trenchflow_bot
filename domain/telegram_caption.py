@@ -3,6 +3,7 @@ from html import escape
 
 
 TELEGRAM_CAPTION_LIMIT = 1024
+TELEGRAM_MESSAGE_LIMIT = 4096
 
 
 def fit_telegram_caption(caption: str, limit: int = TELEGRAM_CAPTION_LIMIT) -> str:
