@@ -62,9 +62,13 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         scanned_at=scanned_at,
     )
 
-    await reply_scan_card(
+    delivered = await reply_scan_card(
         update.message,
         caption=result.caption,
         keyboard=build_scan_keyboard(mint),
         snapshot=result.snapshot,
     )
+    if not delivered:
+        await update.message.reply_text(
+            "Scan data loaded but the card could not be posted. Check bot permissions or try again.",
+        )
