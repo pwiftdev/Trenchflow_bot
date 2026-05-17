@@ -7,7 +7,7 @@ from domain.telegram_caption import TELEGRAM_CAPTION_LIMIT
 from domain.trench_alert import HolderTagRow, TrenchAlert
 
 
-def test_format_scan_card_compact_sections() -> None:
+def test_format_scan_card_phanes_style_tree() -> None:
     snapshot = TokenSnapshot(
         mint="MintAddress1111111111111111111111111111111111",
         symbol="UNG",
@@ -43,7 +43,7 @@ def test_format_scan_card_compact_sections() -> None:
         scanner_display="Alice (@alice)",
         scanned_at=datetime(2026, 5, 16, 13, 18, tzinfo=timezone.utc),
         chat_title="Alpha Group",
-        first_call_line="🔥 @alice @ $147.4K",
+        first_call_line="😈 alice @ $147.40K",
     )
     alert = TrenchAlert(
         total_holders=None,
@@ -59,19 +59,24 @@ def test_format_scan_card_compact_sections() -> None:
 
     text = format_scan_card(snapshot, meta, security, trench_alert=alert)
 
-    assert "📊" in text
-    assert "renounced" not in text.lower()
-    assert "Paid" not in text
-    assert "🔗" in text
+    assert "💊" in text
+    assert " ├" in text
+    assert " └" in text
+    assert "📊 Stats" in text
+    assert "├ USD" in text
+    assert "🟩" in text and "🟥" in text
+    assert "🔒 Security" in text
+    assert "Top 10" in text
+    assert "Dev Sold" in text
+    assert "DEX Paid" in text
+    assert "🔗 Socials" in text
     assert ">DEF</a>" in text
-    assert "⚠️ Bun" in text
-    assert "T10" in text
-    assert "🟢 🟢" in text
-    assert "@alice" in text
+    assert "⚠️ Trench" in text
+    assert "Bundlers" in text
+    assert "Insiders" not in text
 
 
 def test_format_scan_card_fits_telegram_photo_caption() -> None:
-    """Realistic full card (long mint + trench + call line) must fit photo caption limit."""
     mint = "C2omVhcvt3DDY77S2KZzawFJQeETZofgZ4eNWwkXpump"
     snapshot = TokenSnapshot(
         mint=mint,
@@ -87,8 +92,8 @@ def test_format_scan_card_fits_telegram_photo_caption() -> None:
         txns_h1_buys=1100,
         txns_h1_sells=397,
         pair_created_at_ms=1_700_000_000_000,
-        dex_id=None,
-        labels=[],
+        dex_id="pumpfun",
+        labels=["pump"],
         websites=[("Website", "https://bullish.example")],
         socials=[("twitter", "https://x.com/bullish")],
         dex_profile_paid=True,
@@ -106,9 +111,7 @@ def test_format_scan_card_fits_telegram_photo_caption() -> None:
         scanner_display="Bakardi (@bakardisol)",
         scanned_at=datetime(2026, 5, 17, 9, 51, tzinfo=timezone.utc),
         chat_title="Test",
-        first_call_line=(
-            "📈 $1.47M→$1.49M +1% · @bakardisol · 26m"
-        ),
+        first_call_line="😈 bakardisol @ $1.49M [+1%] (26m)",
     )
     alert = TrenchAlert(
         total_holders=None,
@@ -124,38 +127,10 @@ def test_format_scan_card_fits_telegram_photo_caption() -> None:
 
     text = format_scan_card(snapshot, meta, security, trench_alert=alert)
 
-    assert len(text) <= TELEGRAM_CAPTION_LIMIT, f"caption length {len(text)} > {TELEGRAM_CAPTION_LIMIT}"
+    assert len(text) <= TELEGRAM_CAPTION_LIMIT
 
 
-def test_format_ath_shows_price_and_drawdown() -> None:
-    snapshot = TokenSnapshot(
-        mint="Mint1111111111111111111111111111111111111",
-        symbol="T",
-        name="T",
-        price_usd=0.0005,
-        market_cap=1.0,
-        fdv=None,
-        liquidity_usd=None,
-        volume_h24=None,
-        price_change_h1=None,
-        price_change_h24=None,
-        txns_h1_buys=None,
-        txns_h1_sells=None,
-        pair_created_at_ms=None,
-        dex_id=None,
-        ath_price_usd=0.001,
-    )
-    meta = ScanMeta(
-        scanner_display="x",
-        scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
-        chat_title=None,
-    )
-    text = format_scan_card(snapshot, meta, None)
-    assert "ATH" in text
-    assert "from ATH" not in text
-
-
-def test_format_dex_paid_emoji_only() -> None:
+def test_format_dex_paid_emoji() -> None:
     meta = ScanMeta(
         scanner_display="x",
         scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
@@ -177,15 +152,7 @@ def test_format_dex_paid_emoji_only() -> None:
         pair_created_at_ms=None,
         dex_id=None,
     )
-    paid = format_scan_card(
-        TokenSnapshot(**base, dex_profile_paid=True),
-        meta,
-        None,
-    )
-    unpaid = format_scan_card(
-        TokenSnapshot(**base, dex_profile_paid=False),
-        meta,
-        None,
-    )
-    assert "DEX 🟢" in paid
-    assert "DEX 🔴" in unpaid
+    paid = format_scan_card(TokenSnapshot(**base, dex_profile_paid=True), meta, None)
+    unpaid = format_scan_card(TokenSnapshot(**base, dex_profile_paid=False), meta, None)
+    assert "DEX Paid  🟢" in paid
+    assert "DEX Paid  🔴" in unpaid

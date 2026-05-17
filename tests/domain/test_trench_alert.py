@@ -77,6 +77,7 @@ def test_format_scan_card_includes_trench_alert() -> None:
 
     text = format_scan_card(snapshot, meta, None, trench_alert=alert)
 
-    assert "⚠️ Bun 5" in text
-    assert "Sn 2" in text
+    assert "⚠️ Trench" in text
+    assert "Bundlers 5" in text
+    assert "Snipers 2" in text
     assert "Labeled:" not in text
