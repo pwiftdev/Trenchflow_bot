@@ -1,7 +1,10 @@
+import time
 from typing import Any, Optional
 
 import httpx
 import structlog
+
+from domain.birdeye_parse import ath_high_from_ohlcv_items, ohlcv_candle_type_for_age_seconds
 
 log = structlog.get_logger()
 
@@ -56,13 +59,47 @@ class BirdeyeClient:
             },
         )
 
+    async def fetch_token_ath_usd(
+        self,
+        mint: str,
+        *,
+        created_at_unix: Optional[int] = None,
+        lookback_seconds: int = 90 * 86400,
+    ) -> Optional[float]:
+        now = int(time.time())
+        if created_at_unix and created_at_unix > 0:
+            time_from = created_at_unix
+            age_seconds = max(0, now - created_at_unix)
+        else:
+            age_seconds = lookback_seconds
+            time_from = now - lookback_seconds
+
+        candle_type = ohlcv_candle_type_for_age_seconds(age_seconds)
+        data = await self._fetch_data(
+            "/defi/ohlcv",
+            mint,
+            extra_params={
+                "type": candle_type,
+                "currency": "usd",
+                "time_from": str(time_from),
+                "time_to": str(now),
+            },
+        )
+        items = data.get("items") or []
+        if not isinstance(items, list) or not items:
+            log.warning("birdeye_ohlcv_empty", mint=mint, candle_type=candle_type)
+            return None
+
+        use_scaled = bool(data.get("isScaledUiToken"))
+        return ath_high_from_ohlcv_items(items, use_scaled=use_scaled)
+
     async def _fetch_data(
         self,
         path: str,
         mint: str,
         *,
         address_param: str = "address",
-        extra_params: Optional[dict[str, str]] = None,
+        extra_params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         headers = {
@@ -70,7 +107,7 @@ class BirdeyeClient:
             "x-chain": self._chain,
             "accept": "application/json",
         }
-        params: dict[str, str] = {address_param: mint}
+        params: dict[str, Any] = {address_param: mint}
         if extra_params:
             params.update(extra_params)
 

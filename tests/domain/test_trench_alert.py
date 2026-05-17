@@ -59,8 +59,8 @@ def test_format_scan_card_includes_trench_alert() -> None:
         dex_id=None,
     )
     alert = TrenchAlert(
-        total_holders=10,
-        labeled_supply_pct=25.0,
+        total_holders=None,
+        labeled_supply_pct=None,
         tags=(
             HolderTagRow("bundler", "Bundlers", 5, 20.0),
             HolderTagRow("sniper", "Snipers", 2, 5.0),
@@ -80,4 +80,4 @@ def test_format_scan_card_includes_trench_alert() -> None:
     assert "Trench Alert" in text
     assert "Bundlers: 5" in text
     assert "Snipers: 2" in text
-    assert "Labeled: 10" in text
+    assert "Labeled:" not in text

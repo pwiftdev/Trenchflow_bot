@@ -41,6 +41,10 @@ class Settings(BaseSettings):
         default="1h",
         validation_alias="BIRDEYE_HOLDER_PROFILE_INTERVAL",
     )
+    birdeye_ath_lookback_days: int = Field(
+        default=90,
+        validation_alias="BIRDEYE_ATH_LOOKBACK_DAYS",
+    )
 
     database_url: Optional[str] = Field(default=None, validation_alias="DATABASE_URL")
     redis_url: Optional[str] = Field(default=None, validation_alias="REDIS_URL")

@@ -149,6 +149,16 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         overview_data=overview_data,
         security_data=security_data,
     )
+
+    created_unix = (
+        snapshot.pair_created_at_ms // 1000 if snapshot.pair_created_at_ms is not None else None
+    )
+    ath_price_usd = await birdeye.fetch_token_ath_usd(
+        mint,
+        created_at_unix=created_unix,
+        lookback_seconds=settings.birdeye_ath_lookback_days * 86400,
+    )
+
     birdeye_security = security_from_birdeye(
         security_data,
         holder_count=holder_count_from_overview(overview_data),
@@ -161,6 +171,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         metadata_image_url=metadata_image or snapshot.metadata_image_url,
         dex_profile_paid=dex_orders.profile_paid,
         dex_boost_amount_total=dex_orders.boost_amount_total or None,
+        ath_price_usd=ath_price_usd,
     )
 
     scanned_at = datetime.now(timezone.utc)

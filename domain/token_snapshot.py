@@ -29,3 +29,4 @@ class TokenSnapshot:
     boosts_active: Optional[int] = None
     dex_profile_paid: Optional[bool] = None
     dex_boost_amount_total: Optional[int] = None
+    ath_price_usd: Optional[float] = None

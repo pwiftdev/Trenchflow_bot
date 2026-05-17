@@ -54,6 +54,34 @@ def test_format_scan_card_phanes_style_sections() -> None:
     assert "DEX Paid:" in text
 
 
+def test_format_ath_shows_price_and_drawdown() -> None:
+    snapshot = TokenSnapshot(
+        mint="Mint1111111111111111111111111111111111111",
+        symbol="T",
+        name="T",
+        price_usd=0.0005,
+        market_cap=1.0,
+        fdv=None,
+        liquidity_usd=None,
+        volume_h24=None,
+        price_change_h1=None,
+        price_change_h24=None,
+        txns_h1_buys=None,
+        txns_h1_sells=None,
+        pair_created_at_ms=None,
+        dex_id=None,
+        ath_price_usd=0.001,
+    )
+    meta = ScanMeta(
+        scanner_display="x",
+        scanned_at=datetime(2026, 5, 16, tzinfo=timezone.utc),
+        chat_title=None,
+    )
+    text = format_scan_card(snapshot, meta, None)
+    assert "ATH:" in text
+    assert "from ATH" in text
+
+
 def test_format_dex_paid_green_when_paid_red_when_not() -> None:
     meta = ScanMeta(
         scanner_display="x",

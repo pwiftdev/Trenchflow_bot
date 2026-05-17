@@ -115,10 +115,6 @@ def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
         return None
 
     rows: list[str] = []
-    if alert.total_holders is not None:
-        labeled = _fmt_pct(alert.labeled_supply_pct) if alert.labeled_supply_pct is not None else "—"
-        rows.append(f"Labeled: {_fmt_count(alert.total_holders)} holders · {labeled} supply")
-
     for row in alert.tags:
         pct = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "—"
         rows.append(f"{escape(row.label)}: {_fmt_count(row.holder_count)} · {pct}")
@@ -141,7 +137,6 @@ def _format_security(
     lines = ["🔒 <b>Security</b>"]
 
     if security is None:
-        lines.append("├ Fresh: — <i>(soon)</i>")
         lines.append("├ Top 10: —")
         lines.append("├ Mint: —")
         lines.append("├ Freeze: —")
@@ -150,8 +145,6 @@ def _format_security(
             f1 = _fmt_pct(security.fresh_1d_pct) if security.fresh_1d_pct is not None else "—"
             f7 = _fmt_pct(security.fresh_7d_pct) if security.fresh_7d_pct is not None else "—"
             lines.append(f"├ Fresh: {f1} 1D | {f7} 7D")
-        else:
-            lines.append("├ Fresh: — <i>(holder-age — soon)</i>")
 
         top10 = _fmt_pct(security.top10_holder_pct) if security.top10_holder_pct is not None else "—"
         holders = _fmt_count(security.holder_count)
@@ -190,8 +183,13 @@ def _format_supply(snapshot: TokenSnapshot, security: Optional[SecuritySnapshot]
 
 
 def _format_ath(snapshot: TokenSnapshot) -> str:
-    # DexScreener does not provide ATH; reserved for a future price-history source.
-    return "— <i>(price history soon)</i>"
+    if snapshot.ath_price_usd is None:
+        return "—"
+    ath = _fmt_price(snapshot.ath_price_usd)
+    if snapshot.price_usd and snapshot.ath_price_usd > 0:
+        drawdown = ((snapshot.price_usd / snapshot.ath_price_usd) - 1) * 100
+        return f"{ath} ({_fmt_pct(drawdown)} from ATH)"
+    return ath
 
 
 def _format_age(pair_created_at_ms: Optional[int]) -> str:

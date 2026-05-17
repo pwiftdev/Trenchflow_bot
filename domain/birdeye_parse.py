@@ -184,3 +184,32 @@ def _to_int(value: Any) -> Optional[int]:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def ohlcv_candle_type_for_age_seconds(age_seconds: int) -> str:
+    """Pick OHLCV granularity so we stay within Birdeye's 1000-candle cap."""
+    if age_seconds <= 2 * 86400:
+        return "15m"
+    if age_seconds <= 45 * 86400:
+        return "1H"
+    return "1D"
+
+
+def ath_high_from_ohlcv_items(
+    items: list[dict[str, Any]],
+    *,
+    use_scaled: bool = False,
+) -> Optional[float]:
+    """All-time high USD from OHLCV highs ([Birdeye OHLCV](https://docs.birdeye.so/reference/get-defi-ohlcv))."""
+    peak: Optional[float] = None
+    high_key = "scaledH" if use_scaled else "h"
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        high = _to_float(row.get(high_key))
+        if high is None:
+            high = _to_float(row.get("h"))
+        if high is None:
+            continue
+        peak = high if peak is None else max(peak, high)
+    return peak
