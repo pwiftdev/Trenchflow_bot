@@ -121,9 +121,7 @@ def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
         row = by_tag.get(tag)
         if row is None:
             continue
-        supply = _fmt_trench_supply_pct(row.percent_of_supply)
-        suffix = f" · {_fmt_count(row.holder_count)} wallets" if row.holder_count > 0 else ""
-        rows.append(f"{escape(row.label)} {supply} supply{suffix}")
+        rows.append(f"{escape(row.label)} {_fmt_trench_supply_pct(row.percent_of_supply)}")
 
     if not rows:
         return None
