@@ -22,6 +22,7 @@ from domain.ca import is_valid_solana_address
 from domain.scan_card import format_scan_card
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
+from domain.trench_alert import holder_profile_from_birdeye
 from services.birdeye import BirdeyeClient, BirdeyeError, TokenNotFoundError as BirdeyeTokenNotFound
 from services.dexscreener import DexScreenerClient
 from services.helius import HeliusClient, HeliusError
@@ -115,9 +116,20 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     dex_client = _dexscreener_client()
 
     try:
-        overview_data, security_data, helius_security, metadata_image, dex_orders = await asyncio.gather(
+        (
+            overview_data,
+            security_data,
+            holder_profile_data,
+            helius_security,
+            metadata_image,
+            dex_orders,
+        ) = await asyncio.gather(
             birdeye.fetch_token_overview(mint),
             birdeye.fetch_token_security(mint),
+            birdeye.fetch_holder_profile(
+                mint,
+                interval=settings.birdeye_holder_profile_interval,
+            ),
             _fetch_helius_security(mint),
             _fetch_metadata_image(mint),
             dex_client.fetch_token_orders(settings.solana_chain_id, mint),
@@ -142,6 +154,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         holder_count=holder_count_from_overview(overview_data),
     )
     security = merge_security(birdeye_security, helius_security)
+    trench_alert = holder_profile_from_birdeye(holder_profile_data)
 
     snapshot = dataclasses.replace(
         snapshot,
@@ -158,7 +171,7 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         snapshot=snapshot,
         first_call_line=first_call_line,
     )
-    caption = format_scan_card(snapshot, meta, security)
+    caption = format_scan_card(snapshot, meta, security, trench_alert=trench_alert)
     if len(caption) > 1024:
         caption = caption[:1020] + "…"
 

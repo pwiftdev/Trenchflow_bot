@@ -5,6 +5,7 @@ from typing import Optional
 
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
+from domain.trench_alert import TrenchAlert
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,7 @@ def format_scan_card(
     snapshot: TokenSnapshot,
     meta: ScanMeta,
     security: Optional[SecuritySnapshot] = None,
+    trench_alert: Optional[TrenchAlert] = None,
 ) -> str:
     name = escape(snapshot.name or "Unknown")
     symbol = escape(snapshot.symbol or "?")
@@ -54,6 +56,10 @@ def format_scan_card(
     security_block = _format_security(snapshot, security)
     if security_block:
         lines.extend(["", security_block])
+
+    trench_block = _format_trench_alert(trench_alert)
+    if trench_block:
+        lines.extend(["", trench_block])
 
     if meta.first_call_line:
         lines.extend(["", escape(meta.first_call_line)])
@@ -102,6 +108,30 @@ def _format_socials(snapshot: TokenSnapshot) -> Optional[str]:
         return None
 
     return "🔗 <b>Socials</b>\n└ " + " · ".join(parts)
+
+
+def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
+    if alert is None:
+        return None
+
+    rows: list[str] = []
+    if alert.total_holders is not None:
+        labeled = _fmt_pct(alert.labeled_supply_pct) if alert.labeled_supply_pct is not None else "—"
+        rows.append(f"Labeled: {_fmt_count(alert.total_holders)} holders · {labeled} supply")
+
+    for row in alert.tags:
+        pct = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "—"
+        rows.append(f"{escape(row.label)}: {_fmt_count(row.holder_count)} · {pct}")
+
+    if not rows:
+        return "⚠️ <b>Trench Alert</b>"
+
+    lines = ["⚠️ <b>Trench Alert</b>"]
+    for index, content in enumerate(rows):
+        branch = "└" if index == len(rows) - 1 else "├"
+        lines.append(f"{branch} {content}")
+
+    return "\n".join(lines)
 
 
 def _format_security(

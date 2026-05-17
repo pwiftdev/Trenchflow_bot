@@ -38,14 +38,41 @@ class BirdeyeClient:
     async def fetch_token_security(self, mint: str) -> dict[str, Any]:
         return await self._fetch_data("/defi/token_security", mint)
 
-    async def _fetch_data(self, path: str, mint: str) -> dict[str, Any]:
+    async def fetch_holder_profile(
+        self,
+        mint: str,
+        *,
+        interval: str = "1h",
+        ui_amount_mode: str = "raw",
+    ) -> dict[str, Any]:
+        return await self._fetch_data(
+            "/token/v1/holder-profile",
+            mint,
+            address_param="token_address",
+            extra_params={
+                "interval": interval,
+                "ui_amount_mode": ui_amount_mode,
+                "include_zero_balance": "true",
+            },
+        )
+
+    async def _fetch_data(
+        self,
+        path: str,
+        mint: str,
+        *,
+        address_param: str = "address",
+        extra_params: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         headers = {
             "X-API-KEY": self._api_key,
             "x-chain": self._chain,
             "accept": "application/json",
         }
-        params = {"address": mint}
+        params: dict[str, str] = {address_param: mint}
+        if extra_params:
+            params.update(extra_params)
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:

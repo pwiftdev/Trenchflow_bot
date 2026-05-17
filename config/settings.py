@@ -37,6 +37,10 @@ class Settings(BaseSettings):
         validation_alias="BIRDEYE_TIMEOUT_SECONDS",
     )
     birdeye_chain: str = Field(default="solana", validation_alias="BIRDEYE_CHAIN")
+    birdeye_holder_profile_interval: str = Field(
+        default="1h",
+        validation_alias="BIRDEYE_HOLDER_PROFILE_INTERVAL",
+    )
 
     database_url: Optional[str] = Field(default=None, validation_alias="DATABASE_URL")
     redis_url: Optional[str] = Field(default=None, validation_alias="REDIS_URL")
