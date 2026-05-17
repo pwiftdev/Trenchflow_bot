@@ -45,7 +45,7 @@ def holder_profile_from_birdeye(data: dict[str, Any]) -> TrenchAlert:
                 tag=tag,
                 label=TAG_LABELS.get(tag, tag),
                 holder_count=_to_int(row.get("holder_count")) or 0,
-                percent_of_supply=_to_float(row.get("percent_of_supply")),
+                percent_of_supply=_supply_percent(row.get("percent_of_supply")),
             )
         )
 
@@ -72,3 +72,13 @@ def _to_int(value: Any) -> Optional[int]:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _supply_percent(value: Any) -> Optional[float]:
+    """Birdeye may return 0–1 or 0–100; normalize to display percent."""
+    parsed = _to_float(value)
+    if parsed is None:
+        return None
+    if 0 <= parsed <= 1:
+        return parsed * 100.0
+    return parsed

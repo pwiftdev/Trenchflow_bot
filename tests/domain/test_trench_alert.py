@@ -37,6 +37,16 @@ def test_holder_profile_from_birdeye_maps_tags() -> None:
     bundler = next(row for row in alert.tags if row.tag == "bundler")
     assert bundler.holder_count == 404
     assert bundler.percent_of_supply == 50.45
+
+
+def test_supply_percent_scales_fraction() -> None:
+    data = {
+        "holder_summary": {"total_holder": 1, "percent_of_supply": 0.29},
+        "tags": [{"tag": "bundler", "holder_count": 1, "percent_of_supply": 0.29}],
+    }
+    alert = holder_profile_from_birdeye(data)
+    bundler = next(row for row in alert.tags if row.tag == "bundler")
+    assert bundler.percent_of_supply == 29.0
     sniper = next(row for row in alert.tags if row.tag == "sniper")
     assert sniper.holder_count == 0
 
@@ -78,7 +88,9 @@ def test_format_scan_card_includes_trench_alert() -> None:
     text = format_scan_card(snapshot, meta, None, trench_alert=alert)
 
     assert "⚠️" in text
-    assert "Bundlers 5" in text
-    assert "Snipers 2" in text
-    assert "Dev 1" not in text.split("⚠️\n", 1)[1].split("\n\n", 1)[0]
+    trench = text.split("⚠️ Trench", 1)[1].split("\n\n", 1)[0]
+    assert "Bundlers +20% supply" in trench
+    assert "Snipers +5% supply" in trench
+    assert "Insiders 0% supply" in trench
+    assert "Dev" not in trench
     assert "Labeled:" not in text

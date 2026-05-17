@@ -77,8 +77,9 @@ def test_format_scan_card_phanes_style_tree() -> None:
     assert ">DEF</a>" not in text
     assert "Bundlers" in text
     assert "Insiders" not in text
-    trench = text.split("⚠️\n", 1)[1].split("\n\n", 1)[0]
-    assert "Dev 1" not in trench
+    trench = text.split("⚠️ Trench", 1)[1].split("\n\n", 1)[0]
+    assert "supply" in trench
+    assert "Dev" not in trench
 
 
 def test_format_scan_card_fits_telegram_photo_caption() -> None:

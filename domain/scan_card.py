@@ -10,7 +10,7 @@ from domain.trench_alert import TrenchAlert
 
 _BRANCH = " ├"
 _LAST = " └"
-_TRENCH_SKIP_TAGS = frozenset({"dev"})
+_TRENCH_DISPLAY_TAGS = ("bundler", "sniper", "insider", "smart_trader")
 
 
 @dataclass(frozen=True)
@@ -115,19 +115,23 @@ def _format_trench_alert(alert: Optional[TrenchAlert]) -> Optional[str]:
     if alert is None or not alert.tags:
         return None
 
-    parts: list[str] = []
-    for row in alert.tags:
-        if row.tag in _TRENCH_SKIP_TAGS:
+    by_tag = {row.tag: row for row in alert.tags}
+    rows: list[str] = []
+    for tag in _TRENCH_DISPLAY_TAGS:
+        row = by_tag.get(tag)
+        if row is None:
             continue
-        if row.holder_count == 0 and (row.percent_of_supply or 0) == 0:
-            continue
-        pct = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "—"
-        parts.append(f"{escape(row.label)} {_fmt_count(row.holder_count)} {pct}")
+        supply = _fmt_pct(row.percent_of_supply) if row.percent_of_supply is not None else "0%"
+        rows.append(f"{escape(row.label)} {supply} supply")
 
-    if not parts:
+    if not rows:
         return None
 
-    return "⚠️\n" + f"{_LAST} " + " · ".join(parts)
+    lines = ["⚠️ Trench"]
+    for index, content in enumerate(rows):
+        branch = _LAST if index == len(rows) - 1 else _BRANCH
+        lines.append(f"{branch} {content}")
+    return "\n".join(lines)
 
 
 def _format_security(
