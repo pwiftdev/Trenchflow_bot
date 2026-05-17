@@ -3,6 +3,7 @@ import dataclasses
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+import structlog
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -22,15 +23,21 @@ from domain.ca import is_valid_solana_address
 from domain.scan_card import format_scan_card
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
-from services.birdeye import BirdeyeClient, BirdeyeError, TokenNotFoundError as BirdeyeTokenNotFound
+from services.birdeye import (
+    BirdeyeClient,
+    BirdeyeError,
+    TokenNotFoundError as BirdeyeTokenNotFound,
+)
 from services.dexscreener import DexScreenerClient, DexScreenerError, TokenNotFoundError as DexTokenNotFound
 from services.helius import HeliusClient, HeliusError
 
+log = structlog.get_logger()
 
-def _birdeye_client() -> BirdeyeClient:
+
+def _birdeye_client() -> Optional[BirdeyeClient]:
     settings = get_settings()
     if not settings.birdeye_api_key:
-        raise BirdeyeError("BIRDEYE_API_KEY is not configured")
+        return None
     return BirdeyeClient(
         api_key=settings.birdeye_api_key,
         base_url=settings.birdeye_base_url,
@@ -77,6 +84,30 @@ async def _fetch_metadata_image(mint: str) -> Optional[str]:
         return None
 
 
+async def _fetch_birdeye_overview(
+    client: BirdeyeClient,
+    mint: str,
+) -> Optional[dict[str, Any]]:
+    try:
+        return await client.fetch_token_overview(mint)
+    except BirdeyeTokenNotFound:
+        return None
+    except BirdeyeError as exc:
+        log.warning("birdeye_overview_failed", mint=mint, error=str(exc))
+        return None
+
+
+async def _fetch_birdeye_security(
+    client: BirdeyeClient,
+    mint: str,
+) -> Optional[dict[str, Any]]:
+    try:
+        return await client.fetch_token_security(mint)
+    except BirdeyeError as exc:
+        log.warning("birdeye_security_failed", mint=mint, error=str(exc))
+        return None
+
+
 def _apply_token_age(
     snapshot: TokenSnapshot,
     *,
@@ -89,6 +120,14 @@ def _apply_token_age(
     if created_ms is None:
         return snapshot
     return dataclasses.replace(snapshot, pair_created_at_ms=created_ms)
+
+
+async def _snapshot_from_dex(
+    dex_client: DexScreenerClient,
+    chain_id: str,
+    mint: str,
+) -> TokenSnapshot:
+    return await dex_client.fetch_token_snapshot(chain_id, mint)
 
 
 async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -105,31 +144,35 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     settings = get_settings()
-    if not settings.birdeye_api_key:
-        await update.message.reply_text(
-            "Birdeye is not configured yet. Add BIRDEYE_API_KEY to the server environment."
-        )
-        return
-
     dex_client = _dexscreener_client()
     birdeye = _birdeye_client()
 
-    try:
-        overview_data, security_data, helius_security, metadata_image, dex_orders = await asyncio.gather(
-            birdeye.fetch_token_overview(mint),
-            birdeye.fetch_token_security(mint),
-            _fetch_helius_security(mint),
-            _fetch_metadata_image(mint),
-            dex_client.fetch_token_orders(settings.solana_chain_id, mint),
+    helius_security, metadata_image, dex_orders = await asyncio.gather(
+        _fetch_helius_security(mint),
+        _fetch_metadata_image(mint),
+        dex_client.fetch_token_orders(settings.solana_chain_id, mint),
+    )
+
+    overview_data: Optional[dict[str, Any]] = None
+    security_data: Optional[dict[str, Any]] = None
+    if birdeye is not None:
+        overview_data, security_data = await asyncio.gather(
+            _fetch_birdeye_overview(birdeye, mint),
+            _fetch_birdeye_security(birdeye, mint),
         )
-    except BirdeyeTokenNotFound:
+
+    snapshot: Optional[TokenSnapshot] = None
+    if overview_data is not None:
+        snapshot = overview_to_snapshot(overview_data, mint)
+        snapshot = _apply_token_age(
+            snapshot,
+            overview_data=overview_data,
+            security_data=security_data or {},
+        )
+
+    if snapshot is None:
         try:
-            snapshot, helius_security, metadata_image, dex_orders = await asyncio.gather(
-                dex_client.fetch_token_snapshot(settings.solana_chain_id, mint),
-                _fetch_helius_security(mint),
-                _fetch_metadata_image(mint),
-                dex_client.fetch_token_orders(settings.solana_chain_id, mint),
-            )
+            snapshot = await _snapshot_from_dex(dex_client, settings.solana_chain_id, mint)
         except DexTokenNotFound:
             await update.message.reply_text(
                 "Token not found on Birdeye or DexScreener yet. It may be too new or illiquid."
@@ -137,41 +180,30 @@ async def scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             return
         except DexScreenerError:
             await update.message.reply_text(
-                "Token not found on Birdeye and DexScreener is unreachable. Try again shortly."
+                "Couldn't load market data right now. Try again in a moment."
             )
             return
 
-        snapshot = dataclasses.replace(
-            snapshot,
-            metadata_image_url=metadata_image or snapshot.metadata_image_url,
-            dex_profile_paid=dex_orders.profile_paid,
-            dex_boost_amount_total=dex_orders.boost_amount_total or None,
-        )
-        security = helius_security
-    except BirdeyeError as exc:
-        await update.message.reply_text(
-            f"Couldn't load token data from Birdeye ({exc}). Check the API key and try again."
-        )
-        return
-    else:
-        snapshot = overview_to_snapshot(overview_data, mint)
-        snapshot = _apply_token_age(
-            snapshot,
-            overview_data=overview_data,
-            security_data=security_data,
-        )
+    if overview_data is not None and security_data is not None:
         birdeye_security = security_from_birdeye(
             security_data,
             holder_count=holder_count_from_overview(overview_data),
         )
         security = merge_security(birdeye_security, helius_security)
-
-        snapshot = dataclasses.replace(
-            snapshot,
-            metadata_image_url=metadata_image or snapshot.metadata_image_url,
-            dex_profile_paid=dex_orders.profile_paid,
-            dex_boost_amount_total=dex_orders.boost_amount_total or None,
+    elif security_data is not None:
+        security = merge_security(
+            security_from_birdeye(security_data, holder_count=None),
+            helius_security,
         )
+    else:
+        security = helius_security
+
+    snapshot = dataclasses.replace(
+        snapshot,
+        metadata_image_url=metadata_image or snapshot.metadata_image_url,
+        dex_profile_paid=dex_orders.profile_paid,
+        dex_boost_amount_total=dex_orders.boost_amount_total or None,
+    )
 
     scanned_at = datetime.now(timezone.utc)
     first_call_line = await build_first_call_line(update, mint=mint, snapshot=snapshot)

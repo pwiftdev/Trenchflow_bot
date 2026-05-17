@@ -10,6 +10,10 @@ class BirdeyeError(Exception):
     pass
 
 
+class BirdeyeAuthError(BirdeyeError):
+    pass
+
+
 class TokenNotFoundError(BirdeyeError):
     pass
 
@@ -50,17 +54,40 @@ class BirdeyeClient:
                 payload = response.json()
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
-            log.warning("birdeye_http_error", path=path, status=status, mint=mint)
+            detail = _response_message(exc.response)
+            log.warning(
+                "birdeye_http_error",
+                path=path,
+                status=status,
+                mint=mint,
+                detail=detail,
+            )
             if status == 404:
                 raise TokenNotFoundError(mint) from exc
-            if status == 401:
-                raise BirdeyeError("Invalid or missing Birdeye API key") from exc
+            if status in (401, 403):
+                raise BirdeyeAuthError(
+                    "Birdeye rejected the API key"
+                    + (f" ({detail})" if detail else "")
+                    + ". Use a key from bds.birdeye.so → Security; check IP whitelist."
+                ) from exc
             raise BirdeyeError from exc
         except httpx.HTTPError as exc:
             log.warning("birdeye_request_failed", path=path, mint=mint, error=str(exc))
             raise BirdeyeError from exc
 
         return _parse_success_payload(payload, mint=mint, path=path)
+
+
+def _response_message(response: httpx.Response) -> Optional[str]:
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    if isinstance(body, dict):
+        message = body.get("message")
+        if message:
+            return str(message)
+    return None
 
 
 def _parse_success_payload(payload: Any, *, mint: str, path: str) -> dict[str, Any]:

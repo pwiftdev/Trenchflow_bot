@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal, Optional
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -56,6 +56,14 @@ class Settings(BaseSettings):
         validation_alias="DEXSCREENER_TIMEOUT_SECONDS",
     )
     solana_chain_id: str = Field(default="solana", validation_alias="SOLANA_CHAIN_ID")
+
+    @field_validator("birdeye_api_key", mode="before")
+    @classmethod
+    def normalize_birdeye_api_key(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        cleaned = value.strip().strip('"').strip("'")
+        return cleaned or None
 
     @model_validator(mode="before")
     @classmethod

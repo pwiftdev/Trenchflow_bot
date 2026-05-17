@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from services.birdeye import BirdeyeClient, BirdeyeError, TokenNotFoundError
+from services.birdeye import BirdeyeAuthError, BirdeyeClient, TokenNotFoundError
 
 
 def _client() -> BirdeyeClient:
@@ -94,7 +94,7 @@ async def test_fetch_raises_birdeye_error_on_401() -> None:
         )
         mock_client_cls.return_value = mock_client
 
-        with pytest.raises(BirdeyeError, match="API key"):
+        with pytest.raises(BirdeyeAuthError, match="rejected"):
             await _client().fetch_token_overview(
                 "Mint1111111111111111111111111111111111111",
             )
