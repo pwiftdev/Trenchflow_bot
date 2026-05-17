@@ -1,10 +1,12 @@
 """Pure mapping from Birdeye API payloads to domain models."""
 
+import dataclasses
 from typing import Any, Optional
 
 from domain import explorer_links
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
+from domain.trench_alert import TrenchAlert
 
 
 def overview_to_snapshot(data: dict[str, Any], mint: str) -> TokenSnapshot:
@@ -58,8 +60,26 @@ def security_from_birdeye(
         top10_holder_pct=top10,
         holder_count=holder_count,
         supply_ui=supply_ui,
-        dev_sold_label=_dev_holder_label(_to_float(data.get("creatorPercentage"))),
+        dev_sold_label=_dev_holder_label(_creator_percentage_from_security(data)),
     )
+
+
+def enrich_security_dev_sold(
+    security: Optional[SecuritySnapshot],
+    *,
+    trench: Optional[TrenchAlert] = None,
+) -> Optional[SecuritySnapshot]:
+    """Fill DS when token_security omits creator % but holder-profile has a dev tag."""
+    if security is not None and security.dev_sold_label:
+        return security
+
+    label = _dev_sold_label_from_trench(trench)
+    if label is None:
+        return security
+
+    if security is None:
+        return SecuritySnapshot(dev_sold_label=label)
+    return dataclasses.replace(security, dev_sold_label=label)
 
 
 def merge_security(
@@ -126,13 +146,44 @@ def _freeze_renounced(data: dict[str, Any]) -> Optional[bool]:
     return None
 
 
+def _creator_percentage_from_security(data: dict[str, Any]) -> Optional[float]:
+    for key in ("creatorPercentage", "creatorPercent", "devHolderPercentage"):
+        value = _to_float(data.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def _dev_supply_percent_from_trench(trench: Optional[TrenchAlert]) -> Optional[float]:
+    if trench is None:
+        return None
+    for row in trench.tags:
+        if row.tag == "dev":
+            return row.percent_of_supply
+    return None
+
+
+def _dev_sold_label_from_trench(trench: Optional[TrenchAlert]) -> Optional[str]:
+    pct = _dev_supply_percent_from_trench(trench)
+    if pct is None:
+        return None
+    return dev_sold_label_from_supply_percent(pct)
+
+
+def dev_sold_label_from_supply_percent(percent_0_100: float) -> str:
+    """Dev still holds this % of supply; under 1% is treated as sold (green)."""
+    if percent_0_100 < 1.0:
+        return "🟢"
+    return f"🔴{percent_0_100:.1f}%"
+
+
 def _dev_holder_label(creator_pct: Optional[float]) -> Optional[str]:
     if creator_pct is None:
         return None
     if creator_pct < 0.01:
         return "🟢"
     pct = creator_pct if creator_pct >= 1 else creator_pct * 100
-    return f"🔴{pct:.1f}%"
+    return dev_sold_label_from_supply_percent(pct)
 
 
 def _holder_percent_display(value: float) -> float:

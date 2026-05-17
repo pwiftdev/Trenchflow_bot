@@ -1,10 +1,12 @@
 from domain.birdeye_parse import (
+    enrich_security_dev_sold,
     holder_count_from_overview,
     merge_security,
     overview_to_snapshot,
     security_from_birdeye,
 )
 from domain.security_snapshot import SecuritySnapshot
+from domain.trench_alert import HolderTagRow, TrenchAlert
 
 
 OVERVIEW_SAMPLE = {
@@ -84,3 +86,23 @@ def test_merge_security_prefers_birdeye_fills_mint_from_helius() -> None:
     assert merged.mint_renounced is True
     assert merged.holder_count == 100
     assert merged.top10_holder_pct == 20.0
+
+
+def test_security_from_birdeye_reads_alternate_creator_percent_key() -> None:
+    security = security_from_birdeye({"creatorPercent": 0.05})
+
+    assert security.dev_sold_label == "🔴5.0%"
+
+
+def test_enrich_dev_sold_from_holder_profile_when_security_missing_creator() -> None:
+    security = security_from_birdeye({"top10HolderPercent": 0.2})
+    trench = TrenchAlert(
+        total_holders=100,
+        labeled_supply_pct=None,
+        tags=(HolderTagRow("dev", "Dev", 1, 2.9),),
+    )
+
+    enriched = enrich_security_dev_sold(security, trench=trench)
+
+    assert enriched is not None
+    assert enriched.dev_sold_label == "🔴2.9%"

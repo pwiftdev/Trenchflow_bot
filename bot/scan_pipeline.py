@@ -12,6 +12,7 @@ from bot.scan_context import build_first_call_line, build_scan_meta
 from config.settings import get_settings
 from domain.birdeye_parse import (
     creation_time_ms_from_security,
+    enrich_security_dev_sold,
     holder_count_from_overview,
     merge_security,
     overview_to_snapshot,
@@ -176,8 +177,11 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
         holder_count=holder_count_from_overview(overview_data),
         top10_holder_pct=top10_ex_lp,
     )
-    security = merge_security(birdeye_security, helius_security)
     trench_alert = holder_profile_from_birdeye(holder_profile_data)
+    security = enrich_security_dev_sold(
+        merge_security(birdeye_security, helius_security),
+        trench=trench_alert,
+    )
 
     snapshot = dataclasses.replace(
         snapshot,
