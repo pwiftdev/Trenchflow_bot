@@ -6,7 +6,7 @@ from domain.token_snapshot import TokenSnapshot
 
 def build_scan_keyboard(snapshot: TokenSnapshot) -> InlineKeyboardMarkup:
     mint = snapshot.mint
-    dex_url = snapshot.pair_url or explorer_links.dexscreener_token_url(mint)
+    dex_url = explorer_links.dexscreener_token_url(mint)
 
     row1 = [
         InlineKeyboardButton("DEF", url=explorer_links.defined_fi_url(mint)),

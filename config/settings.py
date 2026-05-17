@@ -28,6 +28,15 @@ class Settings(BaseSettings):
         default=None, validation_alias="HELIUS_WEBHOOK_SECRET"
     )
     birdeye_api_key: Optional[str] = Field(default=None, validation_alias="BIRDEYE_API_KEY")
+    birdeye_base_url: str = Field(
+        default="https://public-api.birdeye.so",
+        validation_alias="BIRDEYE_BASE_URL",
+    )
+    birdeye_timeout_seconds: float = Field(
+        default=10.0,
+        validation_alias="BIRDEYE_TIMEOUT_SECONDS",
+    )
+    birdeye_chain: str = Field(default="solana", validation_alias="BIRDEYE_CHAIN")
 
     database_url: Optional[str] = Field(default=None, validation_alias="DATABASE_URL")
     redis_url: Optional[str] = Field(default=None, validation_alias="REDIS_URL")

@@ -111,7 +111,7 @@ def _format_security(
     lines = ["🔒 <b>Security</b>"]
 
     if security is None:
-        lines.append("├ Fresh: — <i>(needs Helius)</i>")
+        lines.append("├ Fresh: — <i>(soon)</i>")
         lines.append("├ Top 10: —")
         lines.append("├ Mint: —")
         lines.append("├ Freeze: —")
