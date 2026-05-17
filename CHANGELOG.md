@@ -11,11 +11,20 @@ When you ship something, add an entry here and update the **Status** line in `CL
 ## Unreleased
 
 - **Fix holder count** on scan card (Helius `getTokenAccounts` — implemented but not working in prod; revisit).
-- Auto-detect CA paste in group messages (regex + base58 validate).
-- Birdeye price fallback; Redis 30s CA-card cache.
+- Redis 30s CA-card cache; Birdeye → DexScreener → Jupiter fallback when Birdeye misses or rate-limits.
 - Sniper %, fresh-wallet %, cluster count on card (Helius-heavy).
 - Prod webhook (`ENV=prod`, domain + HTTPS).
 - Cross-group scan threshold → founders console.
+- Phase 2: `/track`, wallet webhooks, rating refresh.
+
+## 2026-05-17 — Phase 1 — v1 scan path complete (prod-verified)
+
+- **`/scan` + paste CA** — `domain/ca.py` extract + `bot/handlers/ca_detect.py`; mint-specific `MessageHandler` filter. Verified in prod (groups require BotFather privacy **off**).
+- **Birdeye-primary pipeline** — `bot/scan_pipeline.py`: overview, `token_security`, holder-profile (Trench), OHLCV ATH; DexScreener only for DEX Paid + LP `pairAddress` list.
+- **Top 10 ex-LP** — `domain/lp_holders.py` + Birdeye `/defi/v3/token/holder`; excludes pump.fun / AMM pool (`pairAddress` = rank-1 “holder”).
+- **Trench Alert** — Birdeye holder-profile tags as supply-% tree (`domain/trench_alert.py`); dev tag excluded from Trench, shown as DS in security.
+- **Scan card UX** — Phanes-style tree caption; explorer URL row + 🔄/🗑️ (`bot/scan_keyboard.py`); security labels DS/DP; single photo under 1024-char caption.
+- **Startup fix** — `ChatMigrated` on founders supergroup id; retry + log hint to update `FOUNDERS_CHAT_ID`.
 
 ## 2026-05-16 — Phase 1 — DEX Paid on scan card (verified)
 

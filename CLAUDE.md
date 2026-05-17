@@ -8,11 +8,11 @@ This file is loaded into every Cursor / Claude session. Keep it tight and curren
 
 ## Status
 
-- **Current phase:** Phase 1 — CA card + scan logging (in progress; core path works in prod)
-- **Last working feature:** **DEX Paid** on scan card — DexScreener `orders/v1` + approved `tokenProfile` → `🟢 Paid`, else `🔴`. Verified in prod.
+- **Current phase:** Phase 1 — **v1 scan path shipped** (prod-verified). Wallet tracker / webhooks / ratings are Phase 2+.
+- **Last working feature:** **`/scan` + paste CA** — full Birdeye card in one photo message; auto-detect on plain mint or DexScreener URL. Groups need [@BotFather](https://t.me/BotFather) `/setprivacy` → **Disable** + re-add bot.
 - **Known issue (revise later):** **Holder count** (`👥` subline + “total” in security) — Helius `getTokenAccounts` `total` not showing correctly in prod; do not treat as done.
-- **Next task:** Fix holder count. Then: auto-detect CA on paste, Birdeye fallback, Redis cache, fresh/sniper/cluster metrics, prod webhook.
-- **Also shipped:** Alpha feed → `FOUNDERS_CHAT_ID`, metadata token image fallback, command menu + `/help`, first/since-call PnL.
+- **Next task:** Fix holder count → Redis 30s CA-card cache → Birdeye/DexScreener/Jupiter fallback polish → sniper / fresh-wallet / cluster metrics on card → prod webhook (`ENV=prod`) → cross-group scan threshold alert.
+- **Phase 1 scan stack (done):** Birdeye overview + security + holder-profile (Trench) + v3 holders; DexScreener pairs (LP exclude for T10) + DEX Paid; Helius mint/freeze merge; alpha feed; first/since-call PnL; explorer keyboard + refresh/delete.
 - **Deploy:** Hetzner + systemd `trenchflow`, polling (`ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
 
 See `CHANGELOG.md` for what shipped previously.
