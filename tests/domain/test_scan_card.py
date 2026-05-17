@@ -52,6 +52,9 @@ def test_format_scan_card_phanes_style_sections() -> None:
     assert "Top 10:" in text
     assert "🔥 First call" in text
     assert "DEX Paid:" in text
+    assert "🔗" in text
+    assert ">DEF</a>" in text
+    assert ">DS</a>" in text
 
 
 def test_format_ath_shows_price_and_drawdown() -> None:

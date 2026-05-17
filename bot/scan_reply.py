@@ -45,3 +45,32 @@ async def reply_scan_card(
         disable_web_page_preview=False,
         reply_markup=keyboard,
     )
+
+
+async def edit_scan_card(
+    message: Message,
+    *,
+    caption: str,
+    keyboard: InlineKeyboardMarkup,
+    snapshot: TokenSnapshot,
+) -> None:
+    if message.photo:
+        try:
+            await message.edit_caption(
+                caption=caption,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
+            return
+        except BadRequest as exc:
+            log.warning("scan_caption_edit_failed", ca=snapshot.mint, error=str(exc))
+
+    try:
+        await message.edit_text(
+            caption,
+            parse_mode="HTML",
+            disable_web_page_preview=False,
+            reply_markup=keyboard,
+        )
+    except BadRequest as exc:
+        log.warning("scan_text_edit_failed", ca=snapshot.mint, error=str(exc))

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Optional
 
+from domain import explorer_links
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
 from domain.trench_alert import TrenchAlert
@@ -91,21 +92,38 @@ def _format_launchpad(dex_id: Optional[str], labels: list[str]) -> str:
 
 
 def _format_socials(snapshot: TokenSnapshot) -> Optional[str]:
-    if not snapshot.socials and not snapshot.websites:
-        return None
+    mint = snapshot.mint
+    parts: list[str] = [
+        f'<a href="{escape(explorer_links.defined_fi_url(mint))}">DEF</a>',
+        f'<a href="{escape(explorer_links.dexscreener_token_url(mint))}">DS</a>',
+        f'<a href="{escape(explorer_links.gecko_terminal_url(mint))}">GT</a>',
+        f'<a href="{escape(explorer_links.solscan_token_url(mint))}">EXP</a>',
+        f'<a href="{escape(explorer_links.x_search_url(snapshot.symbol, mint))}">X</a>',
+    ]
 
-    parts: list[str] = []
+    seen_urls = {
+        explorer_links.defined_fi_url(mint),
+        explorer_links.dexscreener_token_url(mint),
+        explorer_links.gecko_terminal_url(mint),
+        explorer_links.solscan_token_url(mint),
+        explorer_links.x_search_url(snapshot.symbol, mint),
+    }
+
     for label, url in snapshot.socials[:4]:
+        if url in seen_urls:
+            continue
         short = label.lower()
         if "twitter" in short or short == "x":
-            parts.append(f'<a href="{escape(url)}">X</a>')
+            parts.append(f'<a href="{escape(url)}">Twitter</a>')
         else:
             parts.append(f'<a href="{escape(url)}">{escape(label)}</a>')
-    for label, url in snapshot.websites[:2]:
-        parts.append(f'<a href="{escape(url)}">{escape(label)}</a>')
+        seen_urls.add(url)
 
-    if not parts:
-        return None
+    for label, url in snapshot.websites[:2]:
+        if url in seen_urls:
+            continue
+        parts.append(f'<a href="{escape(url)}">{escape(label)}</a>')
+        seen_urls.add(url)
 
     return "🔗 <b>Socials</b>\n└ " + " · ".join(parts)
 
