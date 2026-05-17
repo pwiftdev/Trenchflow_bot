@@ -17,12 +17,13 @@ from domain.ca import is_valid_solana_address
 
 
 async def run_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, mint: str) -> None:
-    if update.message is None:
+    message = update.effective_message
+    if message is None:
         return
 
     settings = get_settings()
     if not settings.birdeye_api_key:
-        await update.message.reply_text(
+        await message.reply_text(
             "Birdeye is not configured yet. Add BIRDEYE_API_KEY to the server environment."
         )
         return
@@ -30,12 +31,12 @@ async def run_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, mint: str
     try:
         result = await build_scan_result(update, mint)
     except BirdeyeTokenNotFound:
-        await update.message.reply_text(
+        await message.reply_text(
             "Token not found on Birdeye yet. It may be too new or not indexed."
         )
         return
     except BirdeyeError as exc:
-        await update.message.reply_text(f"Birdeye error: {exc}")
+        await message.reply_text(f"Birdeye error: {exc}")
         return
 
     scanned_at = datetime.now(timezone.utc)
@@ -54,13 +55,13 @@ async def run_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, mint: str
     )
 
     delivered = await reply_scan_card(
-        update.message,
+        message,
         caption=result.caption,
         keyboard=build_scan_keyboard(result.snapshot),
         snapshot=result.snapshot,
     )
     if not delivered:
-        await update.message.reply_text(
+        await message.reply_text(
             "Scan data loaded but the card could not be posted. Check bot permissions or try again.",
         )
 

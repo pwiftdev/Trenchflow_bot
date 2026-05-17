@@ -37,3 +37,7 @@ def test_extract_returns_first_valid_mint() -> None:
     other = "So11111111111111111111111111111111111111112"
     text = f"{CHADIMALS_MINT} or {other}"
     assert extract_solana_mint_from_text(text) == CHADIMALS_MINT
+
+
+def test_extract_whole_message_with_bom() -> None:
+    assert extract_solana_mint_from_text("\ufeff" + CHADIMALS_MINT) == CHADIMALS_MINT

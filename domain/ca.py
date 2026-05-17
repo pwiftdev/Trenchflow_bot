@@ -23,6 +23,12 @@ def is_valid_solana_address(address: str) -> bool:
 
 def extract_solana_mint_from_text(text: str) -> Optional[str]:
     """Return the first valid Solana mint found in free-form message text."""
+    text = text.strip().strip("\ufeff")
+    if not text:
+        return None
+    if is_valid_solana_address(text):
+        return text.strip()
+
     for match in _CANDIDATE_IN_TEXT_RE.finditer(text):
         candidate = match.group(1)
         if is_valid_solana_address(candidate):
