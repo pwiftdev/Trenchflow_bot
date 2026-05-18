@@ -23,8 +23,33 @@ class HeliusClient:
     def __init__(self, *, api_key: str, timeout_seconds: float) -> None:
         self._rpc_url = f"https://mainnet.helius-rpc.com/?api-key={api_key}"
         self._timeout = timeout_seconds
+        self._http: Optional[httpx.AsyncClient] = None
+        self._metadata_http: Optional[httpx.AsyncClient] = None
 
-    async def fetch_token_security(self, mint: str) -> SecuritySnapshot:
+    async def aclose(self) -> None:
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
+        if self._metadata_http is not None:
+            await self._metadata_http.aclose()
+            self._metadata_http = None
+
+    def _rpc_client(self) -> httpx.AsyncClient:
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(timeout=self._timeout)
+        return self._http
+
+    def _metadata_client(self) -> httpx.AsyncClient:
+        if self._metadata_http is None or self._metadata_http.is_closed:
+            self._metadata_http = httpx.AsyncClient(timeout=self._timeout, follow_redirects=True)
+        return self._metadata_http
+
+    async def fetch_token_security(
+        self,
+        mint: str,
+        *,
+        include_holder_count: bool = False,
+    ) -> SecuritySnapshot:
         try:
             account_info, largest = await self._rpc_batch(
                 [
@@ -37,6 +62,9 @@ class HeliusClient:
             raise HeliusError from exc
 
         security = _parse_security(account_info, largest)
+
+        if not include_holder_count:
+            return security
 
         holder_count = await self._fetch_holder_count(mint)
         if holder_count is None:
@@ -83,10 +111,9 @@ class HeliusClient:
             return None
 
         try:
-            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
-                response = await client.get(fetch_url)
-                response.raise_for_status()
-                payload = response.json()
+            response = await self._metadata_client().get(fetch_url)
+            response.raise_for_status()
+            payload = response.json()
         except Exception as exc:
             log.warning("helius_metadata_json_failed", uri=json_uri, error=str(exc))
             return None
@@ -94,13 +121,12 @@ class HeliusClient:
         return image_url_from_metadata_json(payload)
 
     async def _rpc_call(self, method: str, params: Any) -> Any:
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(
-                self._rpc_url,
-                json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
-            )
-            response.raise_for_status()
-            body = response.json()
+        response = await self._rpc_client().post(
+            self._rpc_url,
+            json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+        )
+        response.raise_for_status()
+        body = response.json()
 
         if body.get("error"):
             raise HeliusError(str(body["error"]))
@@ -114,10 +140,9 @@ class HeliusClient:
             {"jsonrpc": "2.0", "id": idx, "method": method, "params": params}
             for idx, (method, params) in enumerate(calls, start=1)
         ]
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(self._rpc_url, json=payload)
-            response.raise_for_status()
-            body = response.json()
+        response = await self._rpc_client().post(self._rpc_url, json=payload)
+        response.raise_for_status()
+        body = response.json()
 
         if not isinstance(body, list):
             body = [body]

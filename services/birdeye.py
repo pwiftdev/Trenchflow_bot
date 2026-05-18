@@ -34,6 +34,17 @@ class BirdeyeClient:
         self._base_url = base_url.rstrip("/")
         self._chain = chain
         self._timeout = timeout_seconds
+        self._http: Optional[httpx.AsyncClient] = None
+
+    async def aclose(self) -> None:
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
+
+    def _client(self) -> httpx.AsyncClient:
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(timeout=self._timeout)
+        return self._http
 
     async def fetch_token_overview(self, mint: str) -> dict[str, Any]:
         return await self._fetch_data("/defi/token_overview", mint)
@@ -134,10 +145,9 @@ class BirdeyeClient:
             params.update(extra_params)
 
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                response = await client.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                payload = response.json()
+            response = await self._client().get(url, headers=headers, params=params)
+            response.raise_for_status()
+            payload = response.json()
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             detail = _response_message(exc.response)

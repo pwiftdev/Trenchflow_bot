@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from telegram import Update
 
+from bot import runtime as app_runtime
 from bot.scan_context import build_first_call_line, build_scan_meta
 from config.settings import get_settings
 from domain.birdeye_parse import (
@@ -26,21 +27,15 @@ from domain.telegram_caption import TELEGRAM_CAPTION_LIMIT, fit_telegram_caption
 from domain.security_snapshot import SecuritySnapshot
 from domain.token_snapshot import TokenSnapshot
 from domain.trench_alert import TrenchAlert, holder_profile_from_birdeye
-from services.birdeye import (
-    BirdeyeClient,
-    BirdeyeError,
-    TokenNotFoundError as BirdeyeTokenNotFound,
-)
+from services.birdeye import BirdeyeError, TokenNotFoundError as BirdeyeTokenNotFound
+from services.helius import HeliusClient, HeliusError
 
 __all__ = [
     "BirdeyeError",
     "BirdeyeTokenNotFound",
     "ScanResult",
     "build_scan_result",
-    "birdeye_client",
 ]
-from services.dexscreener import DexScreenerClient
-from services.helius import HeliusClient, HeliusError
 
 
 @dataclass(frozen=True)
@@ -52,50 +47,22 @@ class ScanResult:
     caption: str
 
 
-def birdeye_client() -> BirdeyeClient:
-    settings = get_settings()
-    if not settings.birdeye_api_key:
-        raise BirdeyeError("BIRDEYE_API_KEY is not configured")
-    return BirdeyeClient(
-        api_key=settings.birdeye_api_key,
-        base_url=settings.birdeye_base_url,
-        chain=settings.birdeye_chain,
-        timeout_seconds=settings.birdeye_timeout_seconds,
-    )
-
-
-def dexscreener_client() -> DexScreenerClient:
-    settings = get_settings()
-    return DexScreenerClient(
-        base_url=settings.dexscreener_base_url,
-        timeout_seconds=settings.dexscreener_timeout_seconds,
-    )
-
-
-def _helius_client() -> Optional[HeliusClient]:
-    settings = get_settings()
-    if not settings.helius_api_key:
-        return None
-    return HeliusClient(
-        api_key=settings.helius_api_key,
-        timeout_seconds=settings.helius_timeout_seconds,
-    )
-
-
-async def _fetch_helius_security(mint: str) -> Optional[SecuritySnapshot]:
-    client = _helius_client()
-    if client is None:
-        return None
+async def _fetch_helius_security(
+    client: HeliusClient,
+    mint: str,
+    *,
+    include_holder_count: bool,
+) -> Optional[SecuritySnapshot]:
     try:
-        return await client.fetch_token_security(mint)
+        return await client.fetch_token_security(
+            mint,
+            include_holder_count=include_holder_count,
+        )
     except HeliusError:
         return None
 
 
-async def _fetch_metadata_image(mint: str) -> Optional[str]:
-    client = _helius_client()
-    if client is None:
-        return None
+async def _fetch_metadata_image(client: HeliusClient, mint: str) -> Optional[str]:
     try:
         return await client.fetch_token_image_url(mint)
     except HeliusError:
@@ -116,10 +83,29 @@ def _apply_token_age(
     return dataclasses.replace(snapshot, pair_created_at_ms=created_ms)
 
 
-async def build_scan_result(update: Update, mint: str) -> ScanResult:
+async def build_scan_result(
+    update: Update,
+    mint: str,
+    *,
+    scanned_at: Optional[datetime] = None,
+) -> ScanResult:
     settings = get_settings()
-    birdeye = birdeye_client()
-    dex_client = dexscreener_client()
+    birdeye = app_runtime.get_birdeye()
+    dex_client = app_runtime.get_dexscreener()
+    helius = app_runtime.get_helius()
+
+    async def _skip_helius() -> None:
+        return None
+
+    helius_security_coro = _skip_helius()
+    metadata_image_coro = _skip_helius()
+    if helius is not None:
+        helius_security_coro = _fetch_helius_security(
+            helius,
+            mint,
+            include_holder_count=settings.helius_fetch_holder_count,
+        )
+        metadata_image_coro = _fetch_metadata_image(helius, mint)
 
     (
         overview_data,
@@ -137,8 +123,8 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
             mint,
             interval=settings.birdeye_holder_profile_interval,
         ),
-        _fetch_helius_security(mint),
-        _fetch_metadata_image(mint),
+        helius_security_coro,
+        metadata_image_coro,
         dex_client.fetch_token_orders(settings.solana_chain_id, mint),
         dex_client.fetch_lp_owner_addresses(settings.solana_chain_id, mint),
         birdeye.fetch_token_holders(mint, limit=100),
@@ -191,11 +177,11 @@ async def build_scan_result(update: Update, mint: str) -> ScanResult:
         ath_price_usd=ath_price_usd,
     )
 
-    scanned_at = datetime.now(timezone.utc)
+    when = scanned_at or datetime.now(timezone.utc)
     first_call_line = await build_first_call_line(update, mint=mint, snapshot=snapshot)
     meta = build_scan_meta(
         update,
-        scanned_at=scanned_at,
+        scanned_at=when,
         snapshot=snapshot,
         first_call_line=first_call_line,
     )

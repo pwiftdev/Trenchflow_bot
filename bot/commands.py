@@ -44,7 +44,7 @@ async def _set_founders_commands(bot: Bot, chat_id: int) -> None:
     try:
         await bot.set_my_commands(commands, scope=scope)
     except ChatMigrated as exc:
-        new_chat_id = exc.migrate_to_chat_id
+        new_chat_id = exc.new_chat_id
         log.warning(
             "founders_chat_migrated",
             old_chat_id=chat_id,

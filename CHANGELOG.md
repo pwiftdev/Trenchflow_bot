@@ -14,16 +14,36 @@ When you ship something, add an entry here and update the **Status** line in `CL
 - Docs: `CLAUDE.md`, `README.md`.
 - `deploy/trenchflow.service` → `deploy/argus.service`; VPS paths `/opt/trenchflow` → `/opt/argus` (rename on server when deploying).
 
+## 2026-05-18 — Performance & reliability fixes
+
+- **Shared DB pool** — one SQLAlchemy engine per process (`db/runtime.py`); scan + alpha feed no longer create/dispose engine 3× per scan.
+- **Reused HTTP clients** — Birdeye, DexScreener, Helius keep `httpx.AsyncClient` for connection pooling (`bot/runtime.py` lifecycle).
+- **Refresh callback** — answer `callback_query` once (errors use alert; success answers after fetch).
+- **First-call line** — DB lookup failures degrade to “first call” instead of dropping the line.
+- **Group name** — upsert `groups.name` when title arrives after first anonymous insert.
+- **Helius holder RPC** — off by default (`HELIUS_FETCH_HOLDER_COUNT=false`); Birdeye supplies holder count. Saves 1 RPC/scan.
+- **Alpha window** — `ALPHA_CROSS_GROUP_WINDOW_MINUTES` in settings (default 30).
+- **DB index** — migration `004` on `(group_id, ca, scanned_at)` for first-call lookups.
+- **Scan timestamp** — single `scanned_at` for card meta, DB row, and founders feed.
+- **ChatMigrated** — use `exc.new_chat_id` (python-telegram-bot API) in founders commands + alpha feed retry.
+
+## 2026-05-18 — Docs — align README / CLAUDE with codebase
+
+- Audited repo vs docs: Birdeye-primary scan, actual commands, services, domain modules, DB tables in use.
+- Documented what is **not** implemented (worker, Redis, Jupiter, ratings, buy buttons, prod webhook).
+- Corrected README “what it does” (removed roadmap items presented as shipped).
+
 ---
 
 ## Unreleased
 
 - **Fix holder count** on scan card (Helius `getTokenAccounts` — implemented but not working in prod; revisit).
-- Redis 30s CA-card cache; Birdeye → DexScreener → Jupiter fallback when Birdeye misses or rate-limits.
-- Sniper %, fresh-wallet %, cluster count on card (Helius-heavy).
-- Prod webhook (`ENV=prod`, domain + HTTPS).
-- Cross-group scan threshold → founders console.
-- Phase 2: `/track`, wallet webhooks, rating refresh.
+- Redis 30s CA-card cache (`REDIS_URL` in settings, no client yet).
+- Birdeye → DexScreener → Jupiter **market** fallback when Birdeye fails (scan currently hard-requires Birdeye).
+- Custom on-chain sniper / fresh-wallet / cluster metrics (Birdeye Trench + fresh % already on card where API returns data).
+- Prod webhook (`ENV=prod` — `main.py` raises today).
+- Cross-group **threshold** alert (N groups / T min); feed already shows 30m distinct-group count when >1.
+- Phase 2: `worker.py`, `/track`, Helius webhooks, `swaps` ingestion, `domain/rating.py`, buy buttons.
 
 ## 2026-05-17 — Phase 1 — v1 scan path complete (prod-verified)
 

@@ -28,8 +28,10 @@ async def run_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, mint: str
         )
         return
 
+    scanned_at = datetime.now(timezone.utc)
+
     try:
-        result = await build_scan_result(update, mint)
+        result = await build_scan_result(update, mint, scanned_at=scanned_at)
     except BirdeyeTokenNotFound:
         await message.reply_text(
             "Token not found on Birdeye yet. It may be too new or not indexed."
@@ -39,7 +41,6 @@ async def run_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, mint: str
         await message.reply_text(f"Birdeye error: {exc}")
         return
 
-    scanned_at = datetime.now(timezone.utc)
     await record_scan_event(
         update,
         mint=mint,

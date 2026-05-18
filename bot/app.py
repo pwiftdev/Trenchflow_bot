@@ -6,6 +6,7 @@ from telegram.ext import (
     MessageHandler,
 )
 
+from bot import runtime as app_runtime
 from bot.commands import register_bot_commands
 from bot.filters import HAS_SOLANA_MINT
 from bot.handlers.ca_detect import ca_detect_message
@@ -23,12 +24,17 @@ from config.settings import Settings
 
 def build_application(settings: Settings) -> Application:
     async def post_init(application: Application) -> None:
+        await app_runtime.startup(settings)
         await register_bot_commands(application.bot, settings)
+
+    async def post_shutdown(application: Application) -> None:
+        await app_runtime.shutdown()
 
     application = (
         Application.builder()
         .token(settings.telegram_bot_token)
         .post_init(post_init)
+        .post_shutdown(post_shutdown)
         .build()
     )
     application.add_handler(CommandHandler("help", help_command))

@@ -5,8 +5,8 @@ import structlog
 from telegram import Update
 
 from config.settings import get_settings
+from db import runtime as db_runtime
 from db.queries import FirstScanRow, fetch_first_scan_in_chat, record_scan_event as db_record_scan_event
-from db.session import create_engine, create_session_factory
 from domain.call_pnl import caller_label, format_since_call_line
 from domain.scan_card import ScanMeta
 from domain.token_snapshot import TokenSnapshot
@@ -27,6 +27,33 @@ def _caller_label_from_first_scan(first: FirstScanRow) -> str:
         user_id=first.user_id,
         full_name=first.scanner_full_name,
         username=first.scanner_username,
+    )
+
+
+def _first_scan_fallback_line(
+    *,
+    snapshot: TokenSnapshot,
+    display: str,
+    is_first_scan: bool,
+    first: Optional[FirstScanRow] = None,
+) -> str:
+    if is_first_scan or first is None:
+        return format_since_call_line(
+            first_market_cap_usd=None,
+            current_market_cap_usd=snapshot.market_cap,
+            first_scanned_at=datetime.now().astimezone(),
+            first_caller_label=display,
+            is_first_scan=True,
+            current_caller_label=display,
+        )
+    first_label = _caller_label_from_first_scan(first)
+    return format_since_call_line(
+        first_market_cap_usd=first.market_cap_usd,
+        current_market_cap_usd=snapshot.market_cap,
+        first_scanned_at=first.scanned_at,
+        first_caller_label=first_label,
+        is_first_scan=False,
+        current_caller_label=display,
     )
 
 
@@ -69,47 +96,31 @@ async def build_first_call_line(
         return None
 
     display = _caller_label_from_user(user)
-
     settings = get_settings()
-    if not settings.database_url:
-        return format_since_call_line(
-            first_market_cap_usd=None,
-            current_market_cap_usd=snapshot.market_cap,
-            first_scanned_at=datetime.now().astimezone(),
-            first_caller_label=display,
+
+    if not db_runtime.database_enabled(settings):
+        return _first_scan_fallback_line(
+            snapshot=snapshot,
+            display=display,
             is_first_scan=True,
-            current_caller_label=display,
         )
 
-    engine = create_engine(settings)
     try:
-        session_factory = create_session_factory(engine)
-        async with session_factory() as session:
+        async with db_runtime.session_factory()() as session:
             first = await fetch_first_scan_in_chat(session, ca=mint, group_id=chat.id)
     except Exception as exc:
         log.warning("first_call_lookup_failed", error=str(exc), ca=mint, group_id=chat.id)
-        return None
-    finally:
-        await engine.dispose()
-
-    if first is None:
-        return format_since_call_line(
-            first_market_cap_usd=None,
-            current_market_cap_usd=snapshot.market_cap,
-            first_scanned_at=datetime.now().astimezone(),
-            first_caller_label=display,
+        return _first_scan_fallback_line(
+            snapshot=snapshot,
+            display=display,
             is_first_scan=True,
-            current_caller_label=display,
         )
 
-    first_label = _caller_label_from_first_scan(first)
-    return format_since_call_line(
-        first_market_cap_usd=first.market_cap_usd,
-        current_market_cap_usd=snapshot.market_cap,
-        first_scanned_at=first.scanned_at,
-        first_caller_label=first_label,
-        is_first_scan=False,
-        current_caller_label=display,
+    return _first_scan_fallback_line(
+        snapshot=snapshot,
+        display=display,
+        is_first_scan=first is None,
+        first=first,
     )
 
 
@@ -121,7 +132,7 @@ async def record_scan_event(
     snapshot: TokenSnapshot,
 ) -> None:
     settings = get_settings()
-    if not settings.database_url:
+    if not db_runtime.database_enabled(settings):
         return
 
     chat = update.effective_chat
@@ -129,10 +140,8 @@ async def record_scan_event(
     if chat is None:
         return
 
-    engine = create_engine(settings)
     try:
-        session_factory = create_session_factory(engine)
-        async with session_factory() as session:
+        async with db_runtime.session_factory()() as session:
             try:
                 await db_record_scan_event(
                     session,
@@ -155,5 +164,10 @@ async def record_scan_event(
                     ca=mint,
                     group_id=chat.id,
                 )
-    finally:
-        await engine.dispose()
+    except Exception as exc:
+        log.warning(
+            "scan_event_session_failed",
+            error=str(exc),
+            ca=mint,
+            group_id=chat.id,
+        )

@@ -1,229 +1,278 @@
 # Argus Bot
 
-A Solana-native Telegram bot that replaces Rick + a wallet tracker + a holder bot with one cleaner product. Built for crypto trading groups. Monetized via referral fees from existing trading bots (BonkBot, Trojan, Photon, Maestro), not by charging groups.
+Solana-native Telegram bot for crypto trading groups. **Phase 1 (shipped):** CA scan cards, call tracking, founders alpha feed. **Phase 2+ (not shipped):** wallet tracker, ratings, webhooks, referral buy buttons.
 
-This file is loaded into every Cursor / Claude session. Keep it tight and current. Update the **Status** line below whenever a phase ships.
+Monetization target: referral fees from trading bots (BonkBot, Trojan, Photon, Maestro) — **buy buttons are not in the codebase yet.**
+
+This file is loaded into every Cursor / Claude session. Keep it tight and current. Update **Status** when a phase ships.
 
 ---
 
 ## Status
 
-- **Current phase:** Phase 1 — **v1 scan path shipped** (prod-verified). Wallet tracker / webhooks / ratings are Phase 2+.
-- **Last working feature:** **`/scan` + paste CA** — full Birdeye card in one photo message; auto-detect on plain mint or DexScreener URL. Groups need [@BotFather](https://t.me/BotFather) `/setprivacy` → **Disable** + re-add bot.
-- **Known issue (revise later):** **Holder count** (`👥` subline + “total” in security) — Helius `getTokenAccounts` `total` not showing correctly in prod; do not treat as done.
-- **Next task:** Fix holder count → Redis 30s CA-card cache → Birdeye/DexScreener/Jupiter fallback polish → sniper / fresh-wallet / cluster metrics on card → prod webhook (`ENV=prod`) → cross-group scan threshold alert.
-- **Phase 1 scan stack (done):** Birdeye overview + security + holder-profile (Trench) + v3 holders; DexScreener pairs (LP exclude for T10) + DEX Paid; Helius mint/freeze merge; alpha feed; first/since-call PnL; explorer keyboard + refresh/delete.
-- **Deploy:** Hetzner + systemd `argus`, polling (`ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
+- **Current phase:** Phase 1 — **v1 scan path shipped** (prod-verified on VPS).
+- **Last working feature:** `/scan` + paste CA → Birdeye photo card; refresh/delete callbacks; alpha feed to founders chat.
+- **Known issue:** **Holder count** — Helius `getTokenAccounts` merged into card but unreliable in prod; Birdeye overview count used when present.
+- **Runtime:** `ENV=dev` → polling only. `ENV=prod` → `main.py` raises `NotImplementedError` (webhook not wired).
+- **Deploy:** Hetzner, systemd `argus`, `/opt/argus`. Repo: https://github.com/pwiftdev/Trenchflow_bot
+- **Infra (2026-05-18):** Shared DB pool (`db/runtime.py` + `bot/runtime.py`); reused `httpx` clients per provider; Helius holder RPC off by default (`HELIUS_FETCH_HOLDER_COUNT`).
+- **Next (ordered):** Fix holder count display (Birdeye path) → Redis CA cache → Jupiter/DexScreener market fallback when Birdeye fails → custom sniper/fresh/cluster metrics → `ENV=prod` webhook → cross-group **threshold** alert → Phase 2 `/track` + worker.
 
-See `CHANGELOG.md` for what shipped previously.
-
----
-
-## Product Pitch (one paragraph)
-
-Most Telegram trading groups run 4–5 bots (Rick for CA info, a wallet tracker, a holder bot, sometimes an alpha bot) — the chat ends up unreadable. Argus consolidates those into one bot with a cleaner CA card, integrated smart-wallet tracking, and a proprietary cross-group alpha layer (we see scan activity across every group running the bot, nobody else does). Quick-buy buttons on each card route through referral programs of the major trading bots — that's the revenue model. The trading layer is a Phase-2 product, not part of v1.
+See `CHANGELOG.md` for the ship log.
 
 ---
 
-## Tech Stack
+## What exists in the repo (accurate inventory)
 
-| Layer | Choice | Notes |
-|---|---|---|
-| Language | Python 3.11+ | Async-first. Chose over Node for Cursor readability and Solana SDK ecosystem. |
-| Bot framework | `python-telegram-bot` v21 | Webhook mode in prod, polling in dev. |
-| Solana data | Helius (RPC + Enhanced Transactions + Webhooks) | Primary source for holders, txs, wallet activity. |
-| Price/market data | Birdeye → DexScreener → Jupiter (fallback chain) | Always fall through; don't fail a card on one upstream being down. |
-| DB | PostgreSQL via Supabase | Migrations live in `db/migrations/`. |
-| Cache / queue | Redis (Upstash) | TTL caches for CA cards, rate-limit counters, scan-threshold counters. |
-| Scheduler | APScheduler in-process | Nightly wallet rating refresh, daily cleanup. Move to Celery if it grows. |
-| LLM (lore) | Claude API, model `claude-haiku-4-5` | Short 2-line project summaries. Keep prompts short — Haiku is cheap but token costs add up. |
-| Hosting | Single VPS (Hetzner CX22) to start | Split bot + worker into two services once we exceed ~50 tracked wallets. |
+### Telegram (`bot/`)
 
-**Do not switch any of these without updating this file.** If you genuinely need a new dependency, justify it in the PR description.
+| Piece | Role |
+|-------|------|
+| `app.py` | Registers handlers; `post_init` → BotFather command menu |
+| `handlers/scan.py` | `/scan`, `run_scan()` |
+| `handlers/ca_detect.py` | Auto-scan on mint in message text |
+| `handlers/scan_callbacks.py` | 🔄 refresh, 🗑️ delete |
+| `handlers/help.py`, `group_setup.py` | Help + welcome on bot added |
+| `handlers/ping.py`, `vpstest.py`, `dbtest.py`, `founderstest.py` | Ops / connectivity |
+| `scan_pipeline.py` | `build_scan_result()` — parallel API fetch |
+| `scan_reply.py` | Photo card with text fallback |
+| `scan_keyboard.py` | Explorer URLs (no buy buttons) |
+| `scan_context.py` | `record_scan_event`, first/since-call lines |
+| `alpha_notify.py` | Mirror group scans to `FOUNDERS_CHAT_ID` |
+| `commands.py` | Public: `/scan`, `/help`. Founders: `/founderstest` |
+| `filters.py` | `HAS_SOLANA_MINT` message filter |
+
+**Commands not implemented:** `/track`, `/wallets`.
+
+### Services (`services/` — network I/O only)
+
+| File | Used for |
+|------|----------|
+| `birdeye.py` | Overview, security, holder profile, v3 holders, OHLCV ATH |
+| `dexscreener.py` | Token orders (DEX Paid), LP owner addresses for T10 exclude |
+| `helius.py` | Mint/freeze, holder count attempt, DAS token image |
+
+**Not in repo:** `jupiter.py`, `twitter.py`, `claude.py`. **No Redis client** despite `REDIS_URL` in settings.
+
+### Domain (`domain/` — pure logic, no HTTP)
+
+| File | Role |
+|------|------|
+| `ca.py` | Base58 mint validation + extract from text |
+| `scan_card.py` | HTML caption tree (stats, security, Trench, socials) |
+| `token_snapshot.py`, `security_snapshot.py` | Card DTOs |
+| `birdeye_parse.py` | Birdeye JSON → snapshots; merge Helius security |
+| `trench_alert.py` | Holder-profile tag tree (“⚠️ Trench”) |
+| `lp_holders.py` | Top-10 supply % excluding LP wallets |
+| `call_pnl.py` | First call + since-call **MC %** (not wallet FIFO PnL) |
+| `alpha_feed.py` | Founders alert text + cross-group line |
+| `dex_orders.py` | DexScreener paid/boost parsing |
+| `scan_media.py`, `metadata_image.py`, `telegram_caption.py`, `explorer_links.py` | Photo/caption/helpers |
+
+**Planned, not in repo:** `rating.py`, `pnl.py` (FIFO wallet PnL), `clusters.py`.
+
+### Database (`db/`)
+
+- **Alembic migrations:** `tokens`, `groups`, `wallets`, `tracked_wallets`, `scan_events`, `swaps`.
+- **App writes today:** `groups` (upsert), `scan_events` (every scan). **`queries.py`:** `record_scan_event`, `fetch_first_scan_in_chat`, `count_distinct_groups_for_ca`, `ping_database`.
+- **Not written by app yet:** `tokens`, `wallets`, `tracked_wallets`, `swaps`.
+
+### Entrypoints & runtime
+
+- `main.py` — bot only, polling when `ENV=dev`.
+- `bot/runtime.py` — `startup()` / `shutdown()` wire shared DB pool + HTTP clients (`post_init` / `post_shutdown` in `bot/app.py`).
+- **No `worker.py`**, **no `workers/`** package in tree.
+
+### Tests (`tests/`)
+
+Implemented: `test_ca`, `test_scan_card`, `test_trench_alert`, `test_call_pnl`, `test_alpha_feed`, `test_birdeye_parse`, `test_lp_holders`, `test_dex_orders`, service parse tests, bot handler tests.  
+**Not implemented:** `test_rating`, `test_pnl` (FIFO), sniper/fresh-wallet unit tests.  
+**No** `tests/integration/` directory yet.
 
 ---
 
-## Folder Structure
+## Scan pipeline (hot path)
+
+`build_scan_result()` (`bot/scan_pipeline.py`) runs in parallel:
+
+1. Birdeye: overview, security, holder profile (`BIRDEYE_HOLDER_PROFILE_INTERVAL`, default `1h`), v3 holders (limit 100).
+2. Helius (if key): security merge + metadata image.
+3. DexScreener: orders + LP owners.
+4. Birdeye: ATH from OHLCV (`BIRDEYE_ATH_LOOKBACK_DAYS`, default 90).
+
+Then: top-10 ex-LP, Trench alert, dev-sold enrichment, caption via `format_scan_card` + `fit_telegram_caption`.
+
+**`/scan` requires `BIRDEYE_API_KEY`.** Scan fails with user-visible error if Birdeye missing or token not indexed. There is **no** DexScreener/Jupiter fallback for market data yet.
+
+---
+
+## Product pitch (target state)
+
+Groups today run Rick + wallet tracker + holder bot — noisy chats. Argus aims for one cleaner CA card, smart-wallet tracking, cross-group alpha, and referral buy buttons. **Only the scan card + alpha feed + per-group call tracking are live.**
+
+---
+
+## Tech stack
+
+| Layer | Choice | In repo today |
+|-------|--------|----------------|
+| Language | Python 3.11+ | Yes |
+| Bot | python-telegram-bot v21 | Yes — **polling only** |
+| Market data | **Birdeye primary**; DexScreener for paid + LP | Yes |
+| On-chain | Helius RPC (partial) | Yes — not webhooks yet |
+| DB | PostgreSQL (Supabase) + SQLAlchemy async + Alembic | Yes |
+| Cache | Redis (Upstash) | **Settings only** — not wired |
+| Fallback price | Jupiter | **Planned** — not in repo |
+| Scheduler | APScheduler | **Planned** — not in repo |
+| LLM lore | Claude Haiku | **Planned** — not in repo |
+| Hosting | Hetzner VPS | Yes |
+
+**Do not switch stack without updating this file.**
+
+---
+
+## Folder structure (actual)
 
 ```
-/bot/              # Telegram handlers (commands, callbacks, CA detection)
-/workers/          # Helius webhook receiver, swap parser, notification dispatcher
-/services/         # External API clients — one file per provider
-    helius.py
-    birdeye.py
-    dexscreener.py
-    jupiter.py
-    twitter.py
-    claude.py
-/domain/           # Core business logic — pure functions, no I/O
-    ca_card.py     # CA card composition
-    rating.py      # Wallet rating algorithm
-    pnl.py         # FIFO cost basis, PnL math
-    clusters.py    # Holder cluster detection
-/db/
-    models.py      # SQLAlchemy or asyncpg row mappers
-    queries.py     # All SQL lives here, not scattered
-    migrations/    # Alembic
-/config/
-    settings.py    # Pydantic Settings, reads .env
-/tests/            # Pytest. Mirror the src tree.
-main.py            # Entry point for bot
-worker.py          # Entry point for webhook worker
+/bot/                 # Handlers, scan pipeline, alpha notify
+/services/            # birdeye.py, dexscreener.py, helius.py
+/domain/              # scan_card.py, ca.py, call_pnl.py, trench_alert.py, …
+/db/                  # models.py, queries.py, migrations/
+/config/              # settings.py, logging.py
+/tests/               # pytest
+/deploy/              # argus.service
+main.py
 ```
 
-**Rule:** anything that calls a network goes in `/services/`. Anything in `/domain/` must be a pure function so it can be unit-tested. Cursor: do not put HTTP calls in `/domain/`.
+**Rule:** HTTP in `/services/`. Pure logic in `/domain/`.
 
 ---
 
-## Naming Conventions
+## Naming conventions
 
-- snake_case for files, functions, vars. PascalCase for classes.
-- File names describe what's inside, not what they do. `services/helius.py` not `services/helius_client.py`.
-- Telegram commands are lowercase, no underscores: `/scan`, `/track`, `/wallets`.
-- DB tables are plural snake_case: `tokens`, `wallets`, `tracked_wallets`, `scan_events`, `groups`.
-- Env vars are SCREAMING_SNAKE_CASE prefixed by service: `HELIUS_API_KEY`, `BIRDEYE_API_KEY`, `TELEGRAM_BOT_TOKEN`.
-- Never abbreviate Solana terms. It's `mint_authority`, not `mint_auth`.
+- snake_case files/functions; PascalCase classes.
+- Telegram commands: lowercase, no underscores — `/scan`, `/help` (future: `/track`).
+- DB tables: plural snake_case.
+- Env vars: `SCREAMING_SNAKE_CASE` with service prefix.
 
 ---
 
-## Database (high-level)
+## Database (mental model)
 
-The exact schema lives in `db/migrations/`. The big-picture mental model:
-
-- **tokens** — every CA we've ever scanned. Cached metadata. Updated when stale (>1h).
-- **groups** — every Telegram group the bot is in. `group_id`, `name`, settings (min USD threshold, etc.).
-- **wallets** — global wallet table. `address` is the PK. Rating fields live here (`pnl_30d`, `win_rate`, `hit_rate`, `rating_score`). One row per wallet, ever.
-- **tracked_wallets** — many-to-many between groups and wallets. A wallet can be tracked in multiple groups with different labels.
-- **scan_events** — log row every time a CA is scanned. Used for the cross-group threshold alert. Indexed on (ca, ts).
-- **swaps** — parsed swap history per wallet. Source of truth for PnL calculations.
-
-When in doubt, add a row, don't mutate. We need history for ratings to be honest.
+| Table | Purpose | App usage today |
+|-------|---------|-----------------|
+| `scan_events` | Every scan | **Written** |
+| `groups` | Telegram groups | **Upserted** on scan |
+| `tokens` | CA metadata cache | Schema only |
+| `wallets` | Global wallet + rating fields | Schema only |
+| `tracked_wallets` | Group ↔ wallet | Schema only |
+| `swaps` | Swap history for FIFO PnL | Schema only |
 
 ---
 
-## Key Business Logic (gotchas)
+## Business logic
 
-### CA detection regex
-Solana addresses are base58, 32–44 chars. Match `[1-9A-HJ-NP-Za-km-z]{32,44}` and validate by attempting base58 decode → 32 bytes. Reject 0/O/I/l silently (those aren't in base58). Do not trigger on token names or symbols.
+### Implemented
 
-### Snipers / fresh wallets
-- **Sniper** = a wallet that bought within the first 20 blocks (~8 seconds) of the token's first liquidity event.
-- **Fresh wallet** = wallet whose first-ever transaction is ≤7 days old at the time of the buy.
-- These two metrics are where Rick is weak and where we win on accuracy. **Write tests for the calculations.** Cursor will produce subtly wrong code if you don't.
+- **CA detection** (`domain/ca.py`): base58 32–44 chars, decode → 32 bytes; reject 0/O/I/l; first valid mint in text.
+- **Trench alert** (`domain/trench_alert.py`): Birdeye holder-profile tags; bundler/sniper/insider/smart_trader on card; dev → DS line.
+- **Fresh % on card:** from Birdeye `token_security` (`fresh_1d_pct`, `fresh_7d_pct`) when API returns them — not custom wallet-age scan.
+- **Call PnL** (`domain/call_pnl.py`): first scan in group stores MC; repeats show % change vs first call.
+- **Alpha feed** (`bot/alpha_notify.py`): every group scan → founders chat; shows distinct group count in last **30 minutes** when >1 (informational, not a threshold alarm).
+- **DEX Paid** (`domain/dex_orders.py` + DexScreener orders API).
 
-### Rating algorithm (`domain/rating.py`)
-Weighted blend, normalize each component to 0–1:
-- 30-day PnL (USD) — weight 0.35
-- Win rate (% of buys that closed green) — weight 0.20
-- Hit rate (% of buys that did ≥2x) — weight 0.30
-- Recency penalty (exp decay from last activity) — weight 0.15
+### Planned (do not assume implemented)
 
-Output is `rating_score` in [0, 1]. The exact weights will change — keep them in `config/settings.py` not hardcoded, so we can tune without redeploying.
-
-### Smart-wallet threshold on CA cards
-Show "X smart wallets bought" only for wallets with `rating_score > 0.6` AND that bought this token in the last 24h. Below the threshold is noise.
-
-### Cross-group scan threshold
-When a CA is scanned in N distinct groups within T minutes, post a founders-console alert. Defaults: N=3, T=30. Configurable. Dedupe per (ca, group_id) so spam-scanning in one group doesn't trip the threshold.
-
-### Cluster detection (`domain/clusters.py`)
-For the top 10 holders, group wallets that share a SOL funding source (look back at the first SOL deposit). 2+ holders sharing a funder = a cluster. Surface "X clusters in top 10" on the CA card. Big clusters are a red flag.
+- **Wallet rating** (`domain/rating.py` — weights in `config/settings.py` when added).
+- **FIFO wallet PnL** (`domain/pnl.py`) from `swaps` table.
+- **Sniper / fresh-wallet (on-chain):** buy within first ~20 blocks; wallet age ≤7 days — needs Helius + tests.
+- **Clusters** (`domain/clusters.py`): shared SOL funder in top 10.
+- **Smart-wallet line on card:** `rating_score > 0.6` + bought in 24h.
+- **Cross-group threshold alert:** N groups in T minutes → dedicated founders alert (defaults N=3, T=30); distinct from the feed’s 30m count line.
+- **Redis:** 30s CA-card cache (and other TTLs in settings when added).
 
 ---
 
-## Data Source Rules
+## Data source rules (Phase 1 reality)
 
-- **Helius first** for anything on-chain: holders, mint state, wallet txs, token metadata via DAS. Has webhooks — use them, don't poll.
-- **Birdeye** for market data: price, MC, liquidity, 24h volume.
-- **DexScreener** as fallback when Birdeye is rate-limited or the token is too new for Birdeye to have indexed.
-- **Jupiter price API** as final fallback for a price-only sanity check.
-- **Twitter** only for lore. Don't use it for anything that has to be accurate / fast.
-- **Cache everything.** CA cards in Redis for 30s, lore for 24h, holder snapshots for 5 min. Network calls in the hot path are the #1 thing that makes the bot feel slow.
+- **Birdeye** — required for scan: price, MC, liquidity, volume, security, holder profile, holders list, ATH.
+- **DexScreener** — DEX Paid + LP addresses only (not primary price).
+- **Helius** — optional merge for mint/freeze, holder count, image; webhooks deferred to Phase 2.
+- **Do not** silently show placeholder market data if Birdeye fails — reply with an error (current behavior).
 
-If you add a new data source, add a new file in `/services/` and put the API key in `.env.example`.
+When adding sources: new file under `/services/`, key in `.env.example`.
 
 ---
 
-## Secrets & Config
+## Secrets & config
 
-All secrets go in `.env` (gitignored). `.env.example` is committed with empty values so future devs / Cursor know what env vars exist.
+Committed template: `.env.example`.
 
-Required env vars:
-```
-TELEGRAM_BOT_TOKEN=
-HELIUS_API_KEY=
-HELIUS_WEBHOOK_SECRET=
-BIRDEYE_API_KEY=
-DATABASE_URL=
-REDIS_URL=
-ANTHROPIC_API_KEY=
-FOUNDERS_CHAT_ID=
-SENTRY_DSN=          # optional
-TWITTER_BEARER=      # optional, lore only
-```
+| Variable | Phase 1 |
+|----------|---------|
+| `TELEGRAM_BOT_TOKEN` | Required |
+| `BIRDEYE_API_KEY` | Required for scan |
+| `DATABASE_URL` | Required for scan logging / call lines |
+| `FOUNDERS_CHAT_ID` | Optional (alpha feed) |
+| `HELIUS_API_KEY` | Optional |
+| `REDIS_URL`, `ANTHROPIC_API_KEY`, `HELIUS_WEBHOOK_SECRET`, `TWITTER_BEARER`, `SENTRY_DSN`, `WEBHOOK_URL` | Not used in code yet |
 
-Never commit a real key. Never log a key. If a key needs to be printed for debug, redact to last 4 chars.
+Never commit `.env`. Never log secrets.
 
 ---
 
 ## Testing
 
-- `pytest` from repo root. Tests mirror the source tree.
-- **Required tests:**
-  - CA detection regex (positive + negative cases including the 0/O/I/l confusables).
-  - Rating algorithm (`domain/rating.py`) — fixture wallets with known PnL, assert score ranking.
-  - PnL FIFO math (`domain/pnl.py`) — multi-buy, partial-sell, multi-token cases.
-  - Sniper / fresh-wallet calc — fixtures with mocked block timestamps.
-- Integration tests against Helius / Birdeye go in `/tests/integration/` and run on opt-in (`pytest -m integration`). Don't burn API credits in CI by default.
+```bash
+pytest   # from repo root
+```
+
+**Have tests:** CA regex, scan card, trench alert, call PnL lines, alpha feed, birdeye parse, LP holders, dex orders, caption/media, bot handlers, settings.
+
+**Need before shipping Phase 2 math:** rating, FIFO PnL, on-chain sniper/fresh-wallet.
+
+**Integration tests** (`pytest -m integration`): not set up — add under `tests/integration/` when needed; don’t burn API credits in CI by default.
 
 ---
 
-## Conventions When Editing Code
+## Conventions when editing
 
-- **One feature per prompt.** Don't ask Cursor to "build the wallet tracker" — ask it to add `/track` command, then add webhook registration, then add the swap parser. Big asks produce big mistakes.
-- **Plan before applying.** For non-trivial changes, ask Cursor to describe its plan first; review; then let it edit.
-- **Don't let Cursor rewrite the rating algorithm casually.** That math is load-bearing. Changes to `/domain/rating.py` get a real review.
-- **Prefer adding to extending.** New API client? New file in `/services/`. Don't pile into an existing one.
-- **Async everywhere.** This bot is I/O bound. Sync code in the hot path is a bug.
-- **Log structured.** Use `structlog`. Log levels: DEBUG for hot paths, INFO for command handling, WARNING for upstream failures we recovered from, ERROR for things a human needs to see.
+- **One feature per prompt.**
+- **Async everywhere** in the hot path.
+- **structlog** for logs.
+- Magic numbers → `config/settings.py` when you add them.
+- Don’t rewrite planned rating math casually once `domain/rating.py` exists.
 
 ---
 
 ## What NOT to do
 
-- **Do not** introduce a new ORM, framework, or DB. Stack is set above.
-- **Do not** put network calls in `/domain/`. That folder is pure logic.
-- **Do not** hardcode magic numbers (rating weights, thresholds, TTLs). Put them in `config/settings.py`.
-- **Do not** ship a feature that touches user funds. Custody is a Phase-2 decision and not on the table yet.
-- **Do not** trust user-submitted wallets as smart wallets by default. They go into `tracked_wallets` but only contribute to `rating_score` after a founder approves.
-- **Do not** poll Helius when a webhook would work. Quota is real.
-- **Do not** commit `.env`, the Helius webhook secret, or the Anthropic key. Pre-commit hook should catch this — if it didn't, fix the hook.
-- **Do not** silently fall back to placeholder data on a CA card. If Birdeye is down and DexScreener also fails, say so on the card. Honesty over polish.
+- No new ORM/DB/framework.
+- No HTTP in `/domain/`.
+- No hardcoded thresholds/weights/TTLs (use settings).
+- No user funds / custody in Phase 1.
+- No polling Helius for wallet activity when webhooks exist (Phase 2).
+- No fake fallback prices on failed Birdeye scan.
+- Don’t commit `.env` or log API keys.
 
 ---
 
-## Glossary (Solana / trading bot terms used in code)
+## Glossary
 
-- **CA** — Contract Address. The token mint address. The thing users paste.
-- **LP** — Liquidity Pool. "LP burned" = the LP tokens were sent to a dead address, signalling devs can't pull liquidity.
-- **Mint authority** — the address allowed to mint more of the token. "Renounced" = set to null = good.
-- **Freeze authority** — the address allowed to freeze user balances. Should be null on a legit token.
-- **Snipers** — wallets that bought in the first few blocks. High sniper count = orchestrated launch, often a sell wall later.
-- **Fresh wallet** — wallet created very recently. High % of fresh wallets in top holders = likely a coordinated rug setup.
-- **Cluster** — group of wallets funded from the same source. Indicates one person controlling multiple "different" holders.
-- **Smart wallet** — a wallet with proven historical performance in our DB (rating_score > 0.6).
-- **Rick** — the dominant existing CA-info bot in Solana trading groups. The thing we're displacing.
-- **PnL** — Profit and Loss. We compute FIFO from on-chain swaps; don't use third-party PnL APIs (they disagree with each other).
-- **Hit rate** — % of a wallet's buys that did ≥2x at any point. Different from win rate (which is just green/red on close).
+- **CA** — token mint address.
+- **Trench** — Birdeye holder-profile tag block on the card (not the bot name).
+- **DS / DP** — Dev sold / DEX Paid on security line.
+- **First call / Since call** — per-group scan MC tracking (not wallet PnL).
+- **Rick** — incumbent CA-info bot we’re replacing.
 
 ---
 
-## Open product decisions (resolve before relevant phase)
+## Open product decisions
 
-- Phase 5: Twitter API tier — Basic ($100/mo) vs. scraping. Defer until referral revenue > $0.
-- Phase 6: trading bot — yes/no/defer. Default is defer.
-- Founders console membership — currently just the two founders. Don't widen without explicit decision.
+- Phase 5: Twitter API vs scraping (lore).
+- Phase 6: native trading bot — default defer.
+- Founders console membership — founders only until explicit widen.
 
 ---
 
-If you (Cursor, Claude, future contributor) are unsure about a decision, default to: **ship the smallest correct version, write a test for it, and update this file with what you learned.**
+When unsure: **ship the smallest correct version, test it, update this file and `CHANGELOG.md`.**

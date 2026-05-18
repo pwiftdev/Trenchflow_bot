@@ -21,6 +21,17 @@ class DexScreenerClient:
     def __init__(self, *, base_url: str, timeout_seconds: float) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
+        self._http: Optional[httpx.AsyncClient] = None
+
+    async def aclose(self) -> None:
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
+
+    def _client(self) -> httpx.AsyncClient:
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(timeout=self._timeout)
+        return self._http
 
     async def fetch_token_snapshot(self, chain_id: str, mint: str) -> TokenSnapshot:
         """Load all pools for a mint and pick the best pair (highest liquidity).
@@ -51,10 +62,9 @@ class DexScreenerClient:
     async def fetch_token_orders(self, chain_id: str, mint: str) -> DexOrdersInfo:
         url = f"{self._base_url}/orders/v1/{chain_id}/{mint}"
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-                payload = response.json()
+            response = await self._client().get(url)
+            response.raise_for_status()
+            payload = response.json()
         except httpx.HTTPError as exc:
             log.warning("dexscreener_orders_failed", mint=mint, error=str(exc))
             return DexOrdersInfo(profile_paid=False, boost_amount_total=0, boost_order_count=0)
@@ -67,13 +77,13 @@ class DexScreenerClient:
             f"{self._base_url}/tokens/v1/{chain_id}/{mint}",
         )
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                for url in endpoints:
-                    response = await client.get(url)
-                    response.raise_for_status()
-                    payload = response.json()
-                    if isinstance(payload, list) and payload:
-                        return payload
+            client = self._client()
+            for url in endpoints:
+                response = await client.get(url)
+                response.raise_for_status()
+                payload = response.json()
+                if isinstance(payload, list) and payload:
+                    return payload
         except httpx.HTTPStatusError as exc:
             log.warning("dexscreener_http_error", status=exc.response.status_code, mint=mint)
             raise DexScreenerError from exc

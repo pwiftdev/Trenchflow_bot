@@ -18,11 +18,21 @@ class Settings(BaseSettings):
         validation_alias="FOUNDERS_CHAT_ID",
         description="Alpha / founders feed — every group scan is posted here.",
     )
+    alpha_cross_group_window_minutes: int = Field(
+        default=30,
+        validation_alias="ALPHA_CROSS_GROUP_WINDOW_MINUTES",
+        description="Founders feed: distinct groups that scanned same CA within this window.",
+    )
 
     helius_api_key: Optional[str] = Field(default=None, validation_alias="HELIUS_API_KEY")
     helius_timeout_seconds: float = Field(
         default=10.0,
         validation_alias="HELIUS_TIMEOUT_SECONDS",
+    )
+    helius_fetch_holder_count: bool = Field(
+        default=False,
+        validation_alias="HELIUS_FETCH_HOLDER_COUNT",
+        description="Extra getTokenAccounts RPC; off by default (unreliable in prod). Birdeye supplies holder count.",
     )
     helius_webhook_secret: Optional[str] = Field(
         default=None, validation_alias="HELIUS_WEBHOOK_SECRET"

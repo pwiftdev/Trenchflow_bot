@@ -8,15 +8,13 @@ from telegram.error import ChatMigrated
 
 from bot.scan_keyboard import build_scan_keyboard
 from config.settings import Settings, get_settings
+from db import runtime as db_runtime
 from db.queries import count_distinct_groups_for_ca
-from db.session import create_engine, create_session_factory
 from domain.alpha_feed import AlphaScanContext, format_alpha_scan_alert
 from domain.scan_card import ScanMeta
 from domain.token_snapshot import TokenSnapshot
 
 log = structlog.get_logger()
-
-_CROSS_GROUP_WINDOW_MINUTES = 30
 
 
 def _should_notify(update: Update, settings: Settings) -> bool:
@@ -34,20 +32,17 @@ def _should_notify(update: Update, settings: Settings) -> bool:
 
 async def _fetch_cross_group_count(mint: str, scanned_at: datetime) -> Optional[int]:
     settings = get_settings()
-    if not settings.database_url:
+    if not db_runtime.database_enabled(settings):
         return None
 
-    since = scanned_at - timedelta(minutes=_CROSS_GROUP_WINDOW_MINUTES)
-    engine = create_engine(settings)
+    window_minutes = settings.alpha_cross_group_window_minutes
+    since = scanned_at - timedelta(minutes=window_minutes)
     try:
-        session_factory = create_session_factory(engine)
-        async with session_factory() as session:
+        async with db_runtime.session_factory()() as session:
             return await count_distinct_groups_for_ca(session, ca=mint, since=since)
     except Exception as exc:
         log.warning("alpha_cross_group_count_failed", ca=mint, error=str(exc))
         return None
-    finally:
-        await engine.dispose()
 
 
 async def notify_founders_scan(
@@ -93,12 +88,12 @@ async def notify_founders_scan(
         log.warning(
             "founders_chat_migrated",
             old_chat_id=founders_chat_id,
-            new_chat_id=exc.migrate_to_chat_id,
+            new_chat_id=exc.new_chat_id,
             hint="Update FOUNDERS_CHAT_ID in .env",
         )
         try:
             await bot.send_message(
-                chat_id=exc.migrate_to_chat_id,
+                chat_id=exc.new_chat_id,
                 text=text,
                 parse_mode="HTML",
                 disable_web_page_preview=True,
@@ -107,7 +102,7 @@ async def notify_founders_scan(
         except Exception as retry_exc:
             log.warning(
                 "alpha_feed_send_failed",
-                founders_chat_id=exc.migrate_to_chat_id,
+                founders_chat_id=exc.new_chat_id,
                 ca=snapshot.mint,
                 group_id=chat.id,
                 error=str(retry_exc),

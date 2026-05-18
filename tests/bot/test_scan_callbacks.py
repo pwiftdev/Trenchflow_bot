@@ -77,3 +77,25 @@ async def test_scan_refresh_rebuilds_card() -> None:
         await scan_callback(update, MagicMock())
 
     edit_mock.assert_awaited_once()
+    assert query.answer.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_scan_refresh_birdeye_error_answers_once() -> None:
+    mint = "So11111111111111111111111111111111111111112"
+    query = MagicMock()
+    query.data = f"{REFRESH_PREFIX}{mint}"
+    query.answer = AsyncMock()
+    query.message = MagicMock()
+    update = MagicMock()
+    update.callback_query = query
+
+    from bot.scan_pipeline import BirdeyeError
+
+    with patch(
+        "bot.handlers.scan_callbacks.build_scan_result",
+        AsyncMock(side_effect=BirdeyeError("rate limited")),
+    ):
+        await scan_callback(update, MagicMock())
+
+    query.answer.assert_awaited_once_with("rate limited", show_alert=True)

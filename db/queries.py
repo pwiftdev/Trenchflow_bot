@@ -84,11 +84,7 @@ async def record_scan_event(
     scanner_full_name: Optional[str],
     scanner_username: Optional[str],
 ) -> None:
-    group_values: dict = {"group_id": group_id}
-    if group_name:
-        group_values["name"] = group_name
-
-    group_stmt = insert(Group).values(**group_values)
+    group_stmt = insert(Group).values(group_id=group_id, name=group_name)
     if group_name:
         group_stmt = group_stmt.on_conflict_do_update(
             index_elements=[Group.group_id],

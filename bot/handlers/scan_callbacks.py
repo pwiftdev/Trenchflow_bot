@@ -27,8 +27,6 @@ async def scan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await query.answer("Invalid token address.", show_alert=True)
         return
 
-    await query.answer("Refreshing…")
-
     try:
         result = await build_scan_result(update, mint)
     except BirdeyeTokenNotFound:
@@ -37,6 +35,8 @@ async def scan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     except BirdeyeError as exc:
         await query.answer(str(exc)[:200], show_alert=True)
         return
+
+    await query.answer()
 
     if query.message is None:
         return
