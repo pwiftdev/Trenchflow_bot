@@ -14,7 +14,7 @@ This file is loaded into every Cursor / Claude session. Keep it tight and curren
 - **Last working feature:** `/scan` + paste CA → Birdeye photo card; refresh/delete callbacks; alpha feed to founders chat.
 - **Known issue:** **Holder count** — Helius `getTokenAccounts` merged into card but unreliable in prod; Birdeye overview count used when present.
 - **Runtime:** `ENV=dev` → polling only. `ENV=prod` → `main.py` raises `NotImplementedError` (webhook not wired).
-- **Deploy:** Hetzner, systemd `argus`, `/opt/argus`. Repo: https://github.com/pwiftdev/Trenchflow_bot
+- **Deploy:** Hetzner, systemd `argus`, `/opt/argus`. Repo: https://github.com/pwiftdev/Argus-Telegram-Bot
 - **Infra (2026-05-18):** Shared DB pool (`db/runtime.py` + `bot/runtime.py`); reused `httpx` clients per provider; Helius holder RPC off by default (`HELIUS_FETCH_HOLDER_COUNT`).
 - **Next (ordered):** Fix holder count display (Birdeye path) → Redis CA cache → Jupiter/DexScreener market fallback when Birdeye fails → custom sniper/fresh/cluster metrics → `ENV=prod` webhook → cross-group **threshold** alert → Phase 2 `/track` + worker.
 

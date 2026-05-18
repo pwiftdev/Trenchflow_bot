@@ -102,7 +102,7 @@ When you ship something, add an entry here and update the **Status** line in `CL
 
 ## 2026-05-15 — Phase 0 — VPS deploy + GitHub
 
-- Public repo: https://github.com/pwiftdev/Trenchflow_bot (private docx/assets gitignored).
+- Public repo: https://github.com/pwiftdev/Argus-Telegram-Bot (renamed from `Trenchflow_bot`; private docx/assets gitignored).
 - Bot runs on Hetzner VPS via systemd; `/ping` works without local Mac running.
 
 ## 2026-05-15 — Phase 0 — Dev bot online (`/ping`)

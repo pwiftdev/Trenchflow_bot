@@ -3,7 +3,7 @@
 Solana Telegram bot for crypto trading groups — **Phase 1 ships the CA scan path only.** One bot to replace Rick-style CA cards (wallet tracking, ratings, and buy buttons are later phases).
 
 **Prod:** Hetzner VPS, `/opt/argus`, systemd unit `argus`, **polling** (`ENV=dev`).  
-**Repo:** https://github.com/pwiftdev/Trenchflow_bot  
+**Repo:** https://github.com/pwiftdev/Argus-Telegram-Bot  
 **AI / contributor context:** `CLAUDE.md` (keep in sync when you ship).
 
 ---
