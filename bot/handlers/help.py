@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-HELP_TEXT = """<b>Trenchflow</b> — Solana scan bot for trading groups
+HELP_TEXT = """<b>Argus</b> — Solana scan bot for trading groups
 
 <b>Scanning</b>
 /scan &lt;contract&gt; — Full token card (price, MC, LP, volume, security)

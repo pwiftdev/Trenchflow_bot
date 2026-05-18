@@ -11,7 +11,7 @@ log = structlog.get_logger()
 
 PUBLIC_COMMANDS: tuple[BotCommand, ...] = (
     BotCommand("scan", "Token card — price, MC, LP, security, call tracking"),
-    BotCommand("help", "List commands and how to use Trenchflow"),
+    BotCommand("help", "List commands and how to use Argus"),
 )
 
 FOUNDERS_COMMANDS: tuple[BotCommand, ...] = (

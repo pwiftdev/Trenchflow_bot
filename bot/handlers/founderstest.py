@@ -18,7 +18,7 @@ async def founderstest_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     bot = context.bot
     chat_id = settings.founders_chat_id
-    text = "Trenchflow test — bot can post in this chat."
+    text = "Argus test — bot can post in this chat."
     try:
         await bot.send_message(chat_id=chat_id, text=text)
     except Exception as exc:

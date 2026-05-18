@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 log = structlog.get_logger()
 
-_GROUP_WELCOME = """<b>Trenchflow</b> added — paste a contract address for an instant scan.
+_GROUP_WELCOME = """<b>Argus</b> added — paste a contract address for an instant scan.
 
 <b>Group tip:</b> if paste does nothing but <code>/scan</code> works, open @BotFather → /setprivacy → <b>Disable</b>, remove me from this group, then add me again. Telegram blocks plain messages to bots until privacy is off."""
 

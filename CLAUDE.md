@@ -1,4 +1,4 @@
-# Trenchflow Bot
+# Argus Bot
 
 A Solana-native Telegram bot that replaces Rick + a wallet tracker + a holder bot with one cleaner product. Built for crypto trading groups. Monetized via referral fees from existing trading bots (BonkBot, Trojan, Photon, Maestro), not by charging groups.
 
@@ -13,7 +13,7 @@ This file is loaded into every Cursor / Claude session. Keep it tight and curren
 - **Known issue (revise later):** **Holder count** (`👥` subline + “total” in security) — Helius `getTokenAccounts` `total` not showing correctly in prod; do not treat as done.
 - **Next task:** Fix holder count → Redis 30s CA-card cache → Birdeye/DexScreener/Jupiter fallback polish → sniper / fresh-wallet / cluster metrics on card → prod webhook (`ENV=prod`) → cross-group scan threshold alert.
 - **Phase 1 scan stack (done):** Birdeye overview + security + holder-profile (Trench) + v3 holders; DexScreener pairs (LP exclude for T10) + DEX Paid; Helius mint/freeze merge; alpha feed; first/since-call PnL; explorer keyboard + refresh/delete.
-- **Deploy:** Hetzner + systemd `trenchflow`, polling (`ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
+- **Deploy:** Hetzner + systemd `argus`, polling (`ENV=dev`). Repo: https://github.com/pwiftdev/Trenchflow_bot
 
 See `CHANGELOG.md` for what shipped previously.
 
@@ -21,7 +21,7 @@ See `CHANGELOG.md` for what shipped previously.
 
 ## Product Pitch (one paragraph)
 
-Most Telegram trading groups run 4–5 bots (Rick for CA info, a wallet tracker, a holder bot, sometimes an alpha bot) — the chat ends up unreadable. Trenchflow consolidates those into one bot with a cleaner CA card, integrated smart-wallet tracking, and a proprietary cross-group alpha layer (we see scan activity across every group running the bot, nobody else does). Quick-buy buttons on each card route through referral programs of the major trading bots — that's the revenue model. The trading layer is a Phase-2 product, not part of v1.
+Most Telegram trading groups run 4–5 bots (Rick for CA info, a wallet tracker, a holder bot, sometimes an alpha bot) — the chat ends up unreadable. Argus consolidates those into one bot with a cleaner CA card, integrated smart-wallet tracking, and a proprietary cross-group alpha layer (we see scan activity across every group running the bot, nobody else does). Quick-buy buttons on each card route through referral programs of the major trading bots — that's the revenue model. The trading layer is a Phase-2 product, not part of v1.
 
 ---
 

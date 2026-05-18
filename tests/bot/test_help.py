@@ -16,4 +16,4 @@ async def test_help_replies_with_scan_section() -> None:
     update.message.reply_text.assert_awaited_once()
     text = update.message.reply_text.await_args.args[0]
     assert "/scan" in text
-    assert "Trenchflow" in text
+    assert "Argus" in text

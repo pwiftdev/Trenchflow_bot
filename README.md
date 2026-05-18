@@ -1,4 +1,4 @@
-# Trenchflow
+# Argus
 
 A Solana-native Telegram bot for crypto trading groups. Replaces Rick + a wallet tracker + a holder bot with one cleaner product.
 
@@ -12,7 +12,7 @@ A Solana-native Telegram bot for crypto trading groups. Replaces Rick + a wallet
 - Surfaces cross-group alpha to the founders' console — when a CA is scanned in N groups within T minutes, we know first.
 - Inline buy buttons routing through BonkBot, Trojan, Photon, Maestro referral programs.
 
-The full build plan (`Trenchflow_Build_Plan.docx`) stays local — it is gitignored and not in the public repo. Project context for AI assistants lives in `CLAUDE.md` — read that before opening Cursor.
+The full build plan (`Argus_Build_Plan.docx`) stays local — it is gitignored and not in the public repo. Project context for AI assistants lives in `CLAUDE.md` — read that before opening Cursor.
 
 ## Running locally
 

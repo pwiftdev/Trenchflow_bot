@@ -1,10 +1,18 @@
 # Changelog
 
-All notable changes to Trenchflow. One line per shipped feature. Newest first.
+All notable changes to Argus. One line per shipped feature. Newest first.
 
 Format: `## YYYY-MM-DD — Phase X — Short title` followed by a short bullet list of what changed.
 
 When you ship something, add an entry here and update the **Status** line in `CLAUDE.md`.
+
+---
+
+## 2026-05-18 — Phase 1 — Bot renamed to Argus
+
+- User-facing branding **Trenchflow → Argus** (help, group welcome, `/help` command description, founderstest).
+- Docs: `CLAUDE.md`, `README.md`.
+- `deploy/trenchflow.service` → `deploy/argus.service`; VPS paths `/opt/trenchflow` → `/opt/argus` (rename on server when deploying).
 
 ---
 

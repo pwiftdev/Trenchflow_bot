@@ -1,14 +1,14 @@
 [Unit]
-Description=Trenchflow Telegram Bot
+Description=Argus Telegram Bot
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/trenchflow
-EnvironmentFile=/opt/trenchflow/.env
-ExecStart=/opt/trenchflow/.venv/bin/python main.py
+WorkingDirectory=/opt/argus
+EnvironmentFile=/opt/argus/.env
+ExecStart=/opt/argus/.venv/bin/python main.py
 Restart=always
 RestartSec=5
 

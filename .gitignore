@@ -26,11 +26,14 @@ dist/
 build/
 
 # --- Private docs & local assets (not for public repo) ---
+Argus_Build_Plan.docx
+Argus_Proposal.docx
 Trenchflow_Build_Plan.docx
 Trenchflow_Proposal.docx
 AlphaScan_Build_Plan.docx
 AlphaScan_Proposal.docx
 *.docx
+arguslogo.png
 trenchflowlogo.png
 *.png
 !docs/**/*.png
